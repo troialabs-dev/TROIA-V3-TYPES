@@ -164,6 +164,25 @@ export interface CompanyCardResponse {
   createdAt: string;
 }
 
+// === Credit Usage Alert (embedded in Company.creditBalance) ===
+/** Faixas de consumo, em %, que disparam o aviso de créditos acabando. */
+export const CREDIT_USAGE_THRESHOLDS = [70, 80, 90, 100] as const;
+export type CreditUsageThreshold = (typeof CREDIT_USAGE_THRESHOLDS)[number];
+
+/**
+ * Estado do aviso de consumo de créditos. O percentual é contado sobre o saldo
+ * logo depois da ÚLTIMA ENTRADA de créditos (recarga, renovação ou ajuste) —
+ * a maioria das empresas não tem plano com créditos por ciclo.
+ */
+export interface CreditUsageAlertState {
+  /** Saldo logo depois da última entrada de créditos: a base do percentual. */
+  base: number;
+  /** Quando essa entrada aconteceu. */
+  baseAt: Date;
+  /** Maior faixa já avisada desde `baseAt` (0 = nenhuma). */
+  notified: number;
+}
+
 // === Credit Balance (embedded in Company) ===
 export interface CreditBalance {
   balance: number;
@@ -171,6 +190,7 @@ export interface CreditBalance {
   totalCreditsOut: number;
   lastDebitAt?: Date;
   lastCreditAt?: Date;
+  usageAlert?: CreditUsageAlertState;
 }
 
 // === Credit Subscription (embedded in Company) ===

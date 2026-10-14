@@ -22,7 +22,9 @@ export type AIProviderType =
   | 'moonshotai'
   | 'alibaba'
   | 'minimax'
-  | 'meta';
+  | 'meta'
+  // Microsoft entra (14/10/2026) só pela transcrição: o MAI-Transcribe 2.
+  | 'microsoft';
 
 /**
  * OpenAI Provider Config - APENAS API Key necessário
@@ -145,6 +147,18 @@ export interface AIModelDefinition {
    */
   purpose?: 'agent' | 'judge' | 'stt' | 'tts';
   /**
+   * Esforço de raciocínio FIXO que o agente manda ao provedor (hoje só OpenAI).
+   *
+   * Existe porque modelo com raciocínio desligável "pensa" por padrão quando
+   * ninguém diz nada. Medido em 14/10/2026 com o `gpt-6-luna` em turnos reais:
+   * no padrão do fabricante, 2 de 11 respostas gastaram TODO o limite de saída
+   * pensando e o agente ficou mudo — a mesma falha do GLM 5.3 em 24/09/2026.
+   * Com `'none'` ele não pensa, responde em ~4 s e foi o que venceu a sonda.
+   *
+   * Ausente = o runtime não manda nada (comportamento de antes).
+   */
+  reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
+  /**
    * Slug deste MESMO modelo no Vercel AI Gateway (ex: `openai/gpt-4.1-mini`).
    *
    * **Ausente = não roteia pelo gateway.** O modelo continua sendo servido
@@ -220,6 +234,23 @@ export const AI_MODELS: AIModelDefinition[] = [
     pricing: { input: 0.40, output: 1.60 },
     contextWindow: 1_000_000,
     maxOutputTokens: 32_768,
+  },
+  // Modelo padrão desde 14/10/2026. Sonda com 544 turnos reais (17 empresas):
+  // nota 6,7 contra 5,9 do gpt-4.1-mini, menos erros graves (22% × 29%), usa
+  // a ferramenta de envio em 100% dos turnos — a 1/6 do custo. O preço por
+  // faixa (US$ 0,20/0,75 acima de 272 mil tokens por chamada) não entra:
+  // é 0,1% das nossas chamadas.
+  {
+    id: 'gpt-6-luna',
+    gatewaySlug: 'openai/gpt-6-luna',
+    name: 'GPT-6 Luna',
+    provider: 'openai',
+    features: ['pdf', 'image', 'tools'],
+    highlight: 'Padrão da plataforma: preciso, rápido e econômico',
+    pricing: { input: 0.10, output: 0.50 },
+    contextWindow: 1_050_000,
+    maxOutputTokens: 128_000,
+    reasoningEffort: 'none',
   },
   {
     id: 'o4-mini',
@@ -959,10 +990,30 @@ export const AI_MODELS: AIModelDefinition[] = [
     purpose: 'stt',
     features: [],
     highlight: 'Transcrição alternativa da OpenAI',
-    // US$ 0.00000125 por segundo = US$ 0.000075 por minuto — 80× mais barato
-    // que o Whisper, e era cobrado igual enquanto os dois caíam no preço
-    // genérico da categoria.
-    audioPricing: { perMinute: 0.000075 },
+    // Cobrado por TOKEN de áudio (US$ 1,25 por 1M), não por segundo — o valor
+    // antigo aqui (US$ 0,000075/min) tratava o preço do token como preço do
+    // segundo e saía 24× abaixo. Medido em 14/10/2026 pelo custo que o
+    // gateway devolveu em 110 áudios reais (49 min): US$ 0,0018 por minuto.
+    audioPricing: { perMinute: 0.0018 },
+    pricing: { input: 0, output: 0 },
+    contextWindow: 0,
+    maxOutputTokens: 0,
+  },
+  // Transcrição padrão desde 14/10/2026. Em 110 áudios reais de clientes
+  // (49 min), julgados por um modelo que ouviu cada áudio: nota 9,2 contra
+  // 7,4 do Whisper, erro que muda o sentido em 17% contra 45%, e 3,6× mais
+  // barato. Só existe pelo Vercel AI Gateway.
+  {
+    id: 'mai-transcribe-2',
+    gatewaySlug: 'microsoft/mai-transcribe-2',
+    name: 'MAI-Transcribe 2',
+    provider: 'microsoft',
+    purpose: 'stt',
+    features: [],
+    highlight: 'Transcrição padrão: a mais fiel medida e a mais barata',
+    // US$ 0,00002778 por segundo = US$ 0,0017 por minuto (catálogo do
+    // gateway, conferido pelo custo cobrado nos 110 áudios).
+    audioPricing: { perMinute: 0.0017 },
     pricing: { input: 0, output: 0 },
     contextWindow: 0,
     maxOutputTokens: 0,
@@ -1107,6 +1158,13 @@ export const AI_MODELS: AIModelDefinition[] = [
     maxOutputTokens: 32_768,
   },
 ];
+
+/**
+ * Modelo com que todo agente NOVO nasce (tela, assistente de criação, API e
+ * MCP). Um lugar só: até 14/10/2026 eram três valores soltos, e a API criava
+ * em `gpt-4.1` — 5× o preço do que a tela usava.
+ */
+export const DEFAULT_AGENT_MODEL = 'gpt-6-luna';
 
 // ============================================================================
 // AI MODEL HELPERS

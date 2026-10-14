@@ -2,7 +2,7 @@
  * Supported AI providers for agent execution
  * These are the providers that support AI_TEXT_GENERATION and AI_CHAT_COMPLETION capabilities
  */
-export type AIProviderType = 'openai' | 'anthropic' | 'xai' | 'google' | 'mistral' | 'deepseek' | 'zai' | 'moonshotai' | 'alibaba' | 'minimax' | 'meta';
+export type AIProviderType = 'openai' | 'anthropic' | 'xai' | 'google' | 'mistral' | 'deepseek' | 'zai' | 'moonshotai' | 'alibaba' | 'minimax' | 'meta' | 'microsoft';
 /**
  * OpenAI Provider Config - APENAS API Key necessário
  * Modelo e dimensions são fixados dentro do OpenAIProvider
@@ -110,6 +110,18 @@ export interface AIModelDefinition {
      */
     purpose?: 'agent' | 'judge' | 'stt' | 'tts';
     /**
+     * Esforço de raciocínio FIXO que o agente manda ao provedor (hoje só OpenAI).
+     *
+     * Existe porque modelo com raciocínio desligável "pensa" por padrão quando
+     * ninguém diz nada. Medido em 14/10/2026 com o `gpt-6-luna` em turnos reais:
+     * no padrão do fabricante, 2 de 11 respostas gastaram TODO o limite de saída
+     * pensando e o agente ficou mudo — a mesma falha do GLM 5.3 em 24/09/2026.
+     * Com `'none'` ele não pensa, responde em ~4 s e foi o que venceu a sonda.
+     *
+     * Ausente = o runtime não manda nada (comportamento de antes).
+     */
+    reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
+    /**
      * Slug deste MESMO modelo no Vercel AI Gateway (ex: `openai/gpt-4.1-mini`).
      *
      * **Ausente = não roteia pelo gateway.** O modelo continua sendo servido
@@ -138,6 +150,12 @@ export interface AIModelDefinition {
  * Context/maxOutput: valores reais da API de cada provider
  */
 export declare const AI_MODELS: AIModelDefinition[];
+/**
+ * Modelo com que todo agente NOVO nasce (tela, assistente de criação, API e
+ * MCP). Um lugar só: até 14/10/2026 eram três valores soltos, e a API criava
+ * em `gpt-4.1` — 5× o preço do que a tela usava.
+ */
+export declare const DEFAULT_AGENT_MODEL = "gpt-6-luna";
 /**
  * Modelos que podem atender um cliente — o que o seletor do agente oferece.
  *

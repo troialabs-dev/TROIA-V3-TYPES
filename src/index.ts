@@ -57,6 +57,8 @@ export * from './saved-cards';
 
 // Customer service modules
 export * from './contacts';
+// CPF e data de nascimento digitados pelo cliente (captura por QR)
+export * from './personal-data';
 export * from './customers';
 export * from './leads';
 export * from './funnels';

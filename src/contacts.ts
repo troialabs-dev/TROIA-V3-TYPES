@@ -12,6 +12,11 @@ export interface ContactAddress {
 
 export interface PersonalInfo {
   birthDate?: string;
+  /**
+   * Documento do contato (CPF, CNPJ ou outro) — texto livre, gravado como foi
+   * digitado. A captura por QR grava o CPF já formatado (`000.000.000-00`).
+   */
+  document?: string;
   address?: ContactAddress;
 }
 

@@ -32,6 +32,7 @@ export * from './socket-events';
 export * from './payments';
 export * from './saved-cards';
 export * from './contacts';
+export * from './personal-data';
 export * from './customers';
 export * from './leads';
 export * from './funnels';

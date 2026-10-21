@@ -63,6 +63,8 @@ __exportStar(require("./payments"), exports);
 __exportStar(require("./saved-cards"), exports);
 // Customer service modules
 __exportStar(require("./contacts"), exports);
+// CPF e data de nascimento digitados pelo cliente (captura por QR)
+__exportStar(require("./personal-data"), exports);
 __exportStar(require("./customers"), exports);
 __exportStar(require("./leads"), exports);
 __exportStar(require("./funnels"), exports);

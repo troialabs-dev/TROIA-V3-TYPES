@@ -5,6 +5,8 @@
  * Spec: DOCS/superpowers/specs/2026-08-20-qr-lead-capture-gamification-design.md §4.1
  */
 
+import type { LeadCaptureFields } from './funnels';
+
 export type LeadCaptureSessionStatus =
   | 'waiting_scan'
   | 'filled'
@@ -25,7 +27,10 @@ export interface LeadCaptureSnapshot {
   consentText?: string;
   /** Funil dá cupom a quem se cadastra (`FunnelCaptureConfig.issueCoupon`). */
   issueCoupon?: boolean;
+  /** Legado: sessão criada antes de `fields` (vive até 7 dias no Redis). */
   emailRequired?: boolean;
+  /** Campos da página, já resolvidos na criação da sessão. Leia por `resolveLeadCaptureFields`. */
+  fields?: LeadCaptureFields;
 }
 
 export interface LeadCaptureSession {
@@ -110,7 +115,10 @@ export interface LeadCapturePublicInfo {
   seller: { firstName: string };
   consentText: string;
   hasWhatsappStep: boolean;
+  /** Igual a `fields.email === 'required'` — mantido para a página antiga ainda em cache. */
   emailRequired: boolean;
+  /** Quais campos opcionais a página mostra e quais exige. */
+  fields: LeadCaptureFields;
   status: LeadCaptureSessionStatus;
 }
 
@@ -118,6 +126,10 @@ export interface LeadCapturePublicSubmitRequest {
   name: string;
   phone: string;
   email?: string;
+  /** CPF com ou sem máscara — o servidor confere os dígitos. */
+  cpf?: string;
+  /** Data de nascimento `AAAA-MM-DD`. */
+  birthDate?: string;
   consent: true;
 }
 

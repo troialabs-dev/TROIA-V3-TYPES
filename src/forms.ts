@@ -106,11 +106,6 @@ export interface FormField {
   options?: FormFieldOption[];
   validation?: FormFieldValidation;
   conditionalLogic?: FormConditionalLogic;
-  /**
-   * Mapeamento para um campo da entidade destino (#263) — ex: `name`, `email`,
-   * `phone`. Usado pela auto-criação a partir do `destination` do form.
-   */
-  mapsTo?: string;
   /** Configuracao do campo quando type === FormFieldType.PHOTO. */
   photoConfig?: PhotoFieldConfig;
 }
@@ -120,22 +115,69 @@ export interface FormField {
 // ============================================================
 
 /**
+ * Dados de contato no formulário público (2026-09-29). Ligado, a página pede
+ * nome, WhatsApp e e-mail (cada um obrigatório ou não) e a resposta fica com o
+ * contato (`FormSubmission.contactId`) — achado pelo telefone ou criado.
+ * Desligado, a resposta é anônima. Ligado exige WhatsApp OU e-mail
+ * obrigatório: sem nenhum dos dois não há como garantir o contato.
+ */
+export interface FormContactDataSettings {
+  enabled: boolean;
+  requireName: boolean;
+  requirePhone: boolean;
+  requireEmail: boolean;
+}
+
+/** Formulário novo nasce pedindo nome e WhatsApp; e-mail opcional. */
+export const DEFAULT_FORM_CONTACT_DATA: FormContactDataSettings = {
+  enabled: true,
+  requireName: true,
+  requirePhone: true,
+  requireEmail: false,
+};
+
+/**
+ * E-mail de confirmação para quem respondeu no link público (2026-09-30). Sai
+ * pelo canal de e-mail da empresa (`channelId`, provider `email-resend`) para o
+ * e-mail digitado no bloco "Seus dados" — sem e-mail, não sai. Assunto e texto
+ * aceitam as variáveis de `FORM_CONFIRMATION_EMAIL_VARIABLES`.
+ */
+export interface FormConfirmationEmailSettings {
+  enabled: boolean;
+  channelId?: string;
+  subject?: string;
+  body?: string;
+}
+
+/** Variáveis do e-mail de confirmação — `{{nome}}` etc.; `respostas` vira a lista pergunta/resposta. */
+export const FORM_CONFIRMATION_EMAIL_VARIABLES = ['nome', 'email', 'telefone', 'formulario', 'respostas'] as const;
+
+/**
+ * Aviso às pessoas escolhidas quando chega resposta (2026-09-30), de qualquer
+ * origem (link público, automação, captura, aba do lead). Chega no sino e no
+ * celular mesmo sem a pessoa ter ligado o tipo nas preferências (decisão do dono).
+ */
+export interface FormResponseNotificationSettings {
+  enabled: boolean;
+  userIds: string[];
+}
+
+/**
  * FormSettings - Configuracoes de comportamento do formulario
  */
 export interface FormSettings {
+  /** Ausente = formulário anterior a 2026-09-29, anônimo. */
+  contactData?: FormContactDataSettings;
+  /**
+   * Falso = a mesma pessoa (mesmo contato) não envia de novo pelo link
+   * público. Só vale com os dados de contato ligados (é por eles que ela é
+   * reconhecida). Padrão: true.
+   */
   allowMultipleResponses: boolean;
+  /** Barra "3 de 7 respondidas" no topo da página pública. */
   showProgressBar: boolean;
-  shuffleFields: boolean;
-  confirmationEmail?: {
-    enabled: boolean;
-    emailFieldId?: string;
-    subject?: string;
-    body?: string;
-  };
-  notifications?: {
-    enabled: boolean;
-    userIds: string[];
-  };
+  confirmationEmail?: FormConfirmationEmailSettings;
+  notifications?: FormResponseNotificationSettings;
 }
 
 /**
@@ -169,18 +211,6 @@ export enum FormStatus {
 /**
  * Form - Documento principal do formulario
  */
-/**
- * Destino do formulário (#261) — para onde as respostas apontam. Capturado no
- * drawer "Novo formulário". A auto-criação da entidade na submissão é
- * consumida por workflows via o evento `form.submitted` (que carrega o
- * `destination`).
- */
-export interface FormDestination {
-  targetType: 'lead' | 'contact' | 'ticket';
-  funnelId?: string; // quando targetType='lead'
-  pipelineId?: string; // quando targetType='ticket'
-}
-
 export interface Form extends TenantAwareDocument {
   name: string;
   description?: string;
@@ -191,7 +221,6 @@ export interface Form extends TenantAwareDocument {
   settings: FormSettings;
   styling: FormStyling;
   checklistSettings?: ChecklistSettings;
-  destination?: FormDestination;
   thankYouMessage?: string;
   thankYouRedirectUrl?: string;
   maxResponses?: number;
@@ -242,7 +271,6 @@ export interface CreateFormRequest {
   settings?: Partial<FormSettings>;
   styling?: Partial<FormStyling>;
   checklistSettings?: ChecklistSettings;
-  destination?: FormDestination;
   thankYouMessage?: string;
   thankYouRedirectUrl?: string;
   maxResponses?: number;
@@ -262,7 +290,6 @@ export interface UpdateFormRequest {
   settings?: Partial<FormSettings>;
   styling?: Partial<FormStyling>;
   checklistSettings?: ChecklistSettings;
-  destination?: FormDestination;
   thankYouMessage?: string;
   thankYouRedirectUrl?: string;
   maxResponses?: number | null;
@@ -311,12 +338,35 @@ export interface FormSubmissionMetadata {
 /**
  * FormSubmission - Documento de resposta individual
  */
+/**
+ * De onde veio a resposta (2026-09-28). O relatório do formulário junta as
+ * respostas do link público (`form-submissions`) com as gravadas num lead
+ * (`checklists`): captura por QR, automação ("Salvar formulário") e a aba
+ * Formulários do lead. Ausente = link público (respostas antigas).
+ */
+export type FormSubmissionSource = 'public_link' | 'automation' | 'lead_capture' | 'lead';
+
 export interface FormSubmission extends TenantAwareDocument {
   formId: string;
   answers: FormAnswer[];
   metadata: FormSubmissionMetadata;
   submittedAt: Date;
   contactId?: string;
+  source?: FormSubmissionSource;
+  /** Lead da resposta, quando ela foi gravada num lead. */
+  leadId?: string;
+}
+
+/**
+ * Quem respondeu (2026-09-29) — montado na LEITURA a partir do `contactId` da
+ * resposta. Sem contato (link público anônimo, resposta anterior a
+ * 29/09/2026) não há `respondent`.
+ */
+export interface FormRespondent {
+  name?: string;
+  /** Só dígitos, com DDI (ex.: 554791236370). Nunca o LID. */
+  phone?: string;
+  email?: string;
 }
 
 /**
@@ -324,6 +374,7 @@ export interface FormSubmission extends TenantAwareDocument {
  */
 export interface FormSubmissionResponse extends Omit<FormSubmission, '_id'> {
   id: string;
+  respondent?: FormRespondent;
 }
 
 /**
@@ -341,6 +392,16 @@ export interface FormSubmissionListResponse extends ListResponse<FormSubmissionR
 export interface SubmitFormRequest {
   answers: { fieldId: string; value: string | string[] | number | boolean | null }[];
   metadata?: Partial<FormSubmissionMetadata>;
+  /** Dados de contato — só quando o formulário pede (`settings.contactData`). */
+  contact?: FormSubmissionContact;
+}
+
+/** O que a pessoa digitou no bloco de contato da página pública. */
+export interface FormSubmissionContact {
+  name?: string;
+  /** Com DDI (ex.: +5547991236370). */
+  phone?: string;
+  email?: string;
 }
 
 /**
@@ -390,6 +451,12 @@ export interface FormResponsesByDate {
 
 /**
  * FormStats - Estatisticas completas do formulario
+ *
+ * Com período (`FormStatsQuery.startDate`, 2026-09-30): total, hoje, tempo
+ * médio, estatística por campo e respostas por dia valem só para o período, e
+ * `responsesByDate` traz TODOS os dias corridos dele (zero nos dias sem
+ * resposta). `completionRate` e `viewsCount` são sempre desde o início — as
+ * visualizações não têm data.
  */
 export interface FormStats {
   totalResponses: number;
@@ -399,6 +466,16 @@ export interface FormStats {
   viewsCount: number;
   fieldStats: FormFieldStats[];
   responsesByDate: FormResponsesByDate[];
+}
+
+/** Filtro de período do relatório do formulário (`GET /forms/:id/stats`). */
+export interface FormStatsQuery {
+  /** Início do período (ISO). Sem ele: tudo, e o gráfico mostra os últimos 30 dias com resposta. */
+  startDate?: string;
+  /** Fim do período (ISO). Padrão: agora. */
+  endDate?: string;
+  /** Fuso para contar os dias (IANA, ex.: America/Sao_Paulo). Padrão: UTC. */
+  timezone?: string;
 }
 
 // ============================================================
@@ -415,7 +492,8 @@ export interface FormPublicData {
   fields: FormField[];
   settings: {
     showProgressBar: boolean;
-    shuffleFields: boolean;
+    /** Presente só quando o formulário pede os dados de contato. */
+    contactData?: FormContactDataSettings;
   };
   styling: FormStyling;
   thankYouMessage?: string;

@@ -9,6 +9,41 @@ export interface ConversationPrivacy {
  */
 export type ConversationLastMessageSenderType = 'contact' | 'user' | 'ai' | 'automation' | 'automation-follow';
 /**
+ * Por que a corrente de transferências por inatividade de uma espera acabou
+ * sem resposta (spec 2026-09-29-transferencia-por-inatividade, D4/D6):
+ * - `max_transfers`: atingiu o limite do canal;
+ * - `no_candidate`: não sobrou ninguém para receber;
+ * - `fixed_operator_reached`: chegou na pessoa fixa (a corrente termina nela);
+ * - `fixed_operator_invalid`: a pessoa fixa não é mais usuário ativo.
+ */
+export type InactivityTransferEndReason = 'max_transfers' | 'no_candidate' | 'fixed_operator_reached' | 'fixed_operator_invalid';
+/**
+ * Estado da espera do cliente para a transferência automática por
+ * inatividade. Ausente = relógio desligado nesta conversa. Datas em ISO na
+ * API (`Date` no banco); ids como string na API (`ObjectId` no banco).
+ *
+ * O estado só some com uma resposta humana, fechamento, reabertura,
+ * desatribuição ou IA ativa — mensagem nova do cliente NUNCA reinicia a
+ * corrente de uma espera que já existe (I2).
+ */
+export interface ConversationInactivityTransferState {
+    /** Quando o cliente passou a esperar uma pessoa (informativo). */
+    waitingSince: string;
+    /** Início da janela atual — âncora do prazo. Regravado ao armar, rearmar e transferir. */
+    armedAt: string;
+    /** Responsável da janela atual. */
+    armedForUserId: string;
+    /** Prazo da janela atual. Ausente = corrente encerrada (`endedAt`). */
+    dueAt?: string;
+    /** Corrente encerrada sem resposta. O estado fica até resposta, fechamento ou desatribuição. */
+    endedAt?: string;
+    endedReason?: InactivityTransferEndReason;
+    /** Transferências já feitas nesta espera. */
+    transfers: number;
+    /** Quem já deixou esta espera sem resposta — não volta no rodízio dela (D6). */
+    skippedUserIds: string[];
+}
+/**
  * Estado da janela de mensageria da Meta para a conversa.
  *
  * Presente APENAS quando o canal é Meta oficial (whatsapp-business,
@@ -175,6 +210,24 @@ export interface Conversation extends CreatorStamp {
     satisfactionAt?: string;
     /** Auto-respostas fora do horário já enviadas nesta conversa (máx 3) */
     outOfHoursTryings?: number;
+    /** Quando saiu o último aviso fora do horário (ISO na API; Date no banco) — no máximo 1 por hora */
+    outOfHoursLastSentAt?: string;
+    /** Espera do cliente para a transferência automática por inatividade — ausente = relógio desligado */
+    inactivityTransfer?: ConversationInactivityTransferState;
+    /**
+     * Cliente esperando uma PESSOA numa conversa ainda sem responsável (fila),
+     * num canal com a transferência por inatividade ligada. Quando alguém
+     * assumir a conversa, o relógio arma a partir daí — mesmo que uma mensagem
+     * automática (fora do horário, boas-vindas) tenha saído depois do cliente.
+     * Some com resposta humana, fechamento ou quando o relógio arma.
+     */
+    inactivityAwaitingSince?: string;
+    /**
+     * Última resposta de uma PESSOA da empresa (tela ou celular), ISO na API /
+     * Date no banco. Só avança. Impede que uma mensagem do cliente anterior a
+     * essa resposta, processada depois dela, arme o relógio por engano.
+     */
+    lastHumanReplyAt?: string;
     provider?: {
         id: string;
         name: string;

@@ -2,6 +2,8 @@ import { ObjectId } from 'mongodb';
 import type { ActorType } from './common';
 
 import type { DatabaseType } from './databases';
+import type { FormField } from './forms';
+import { FormFieldType } from './forms';
 
 // ============================================================
 // WORKFLOW TYPES
@@ -40,6 +42,12 @@ export const WORKFLOW_NODE_TYPES = [
   'action_assign',
   'action_set_variable',
   'action_create_conversation',
+  'action_transfer_conversation',
+  'action_satisfaction_survey',
+  'action_ask_question',
+  'action_ask_form',
+  'action_next_number',
+  'action_save_form_response',
   'action_create_ticket',
   'action_internal_notification',
   'action_find_leads',
@@ -83,6 +91,29 @@ export const WORKFLOW_FILTERABLE_NODE_TYPES: readonly WorkflowNodeType[] = WORKF
 
 export function nodeTypeAcceptsFilters(type: string): boolean {
   return (WORKFLOW_FILTERABLE_NODE_TYPES as readonly string[]).includes(type);
+}
+
+/**
+ * Saídas "Sucesso" e "Falha" (2026-09-23, nó Transferir conversa): nó de ação
+ * que pode NÃO conseguir fazer o que promete ganha duas saídas, e o desenho
+ * decide o que acontece em cada caso. Fonte ÚNICA para a tela (alças do nó),
+ * o validador e o compilador.
+ *
+ * O nó devolve `{ success: boolean }`: `true` segue pela saída `success`,
+ * `false` pela `failure`. Sem ligação na saída Falha o nó LANÇA quando não
+ * consegue — a execução falha com o motivo, em vez de terminar calada.
+ */
+export const WORKFLOW_SUCCESS_HANDLE = 'success';
+export const WORKFLOW_FAILURE_HANDLE = 'failure';
+
+export const WORKFLOW_SUCCESS_FAILURE_NODE_TYPES: readonly WorkflowNodeType[] = [
+  'action_transfer_conversation',
+  'action_satisfaction_survey',
+  'action_save_form_response',
+];
+
+export function nodeTypeHasSuccessFailureOutputs(type: string): boolean {
+  return (WORKFLOW_SUCCESS_FAILURE_NODE_TYPES as readonly string[]).includes(type);
 }
 
 /**
@@ -909,6 +940,547 @@ export interface CreateConversationActionConfig {
    * Can be a context reference like {{event.channelId}}.
    */
   channelId?: string;
+
+  /**
+   * De onde vem o canal (2026-09-30):
+   * - 'fixed' (padrão): o `channelId` configurado no nó;
+   * - 'lead_origin': o canal de origem do lead do fluxo (`lead.channelId`) —
+   *   no lead capturado por QR, o canal de confirmação do funil. Lead sem
+   *   canal faz o nó falhar com o motivo.
+   */
+  channelSource?: 'fixed' | 'lead_origin';
+}
+
+/**
+ * Transfer Conversation Action Configuration (2026-09-23)
+ *
+ * Transfere a conversa para um usuário ou uma equipe pelo MESMO motor do botão
+ * "Transferir" do chat (`ConversationsService.transferConversation`): o usuário
+ * precisa atender o canal da conversa; a equipe roda o rodízio entre os membros
+ * que atendem o canal. Deu certo → pausa o agente de IA da conversa (se ativo)
+ * e segue pela saída Sucesso; não deu → saída Falha (ver
+ * `WORKFLOW_SUCCESS_FAILURE_NODE_TYPES`).
+ *
+ * Todo id aceita `{{variável}}` do fluxo.
+ */
+export interface TransferConversationActionConfig {
+  /**
+   * De onde vem a conversa.
+   * - 'context': a conversa do gatilho — ou, sem ela, a criada pelo nó logo antes
+   * - 'variable': `conversationId` traz um id ou uma `{{variável}}`
+   * @default 'context'
+   */
+  conversationSource?: 'context' | 'variable';
+  /** Conversa quando `conversationSource === 'variable'` (aceita {{variável}}). */
+  conversationId?: string;
+  /** Destino da transferência. */
+  transferTo: 'user' | 'team';
+  /**
+   * Como o destino foi escolhido na tela: da lista ('specific') ou por uma
+   * `{{variável}}` ('variable'). O motor trata os dois igual — muda só o
+   * controle que a tela mostra (mesmo padrão do `assignTo` do Criar lead).
+   * @default 'specific'
+   */
+  targetSource?: 'specific' | 'variable';
+  /** Usuário de destino quando `transferTo === 'user'` (aceita {{variável}}). */
+  userId?: string;
+  /** Equipe de destino quando `transferTo === 'team'` (aceita {{variável}}). */
+  teamId?: string;
+  /** Motivo gravado no histórico da conversa (aceita {{variável}}). */
+  reason?: string;
+}
+
+/**
+ * Motivos de encerramento que o nó CSAT oferece: só os que NÃO bloqueiam a
+ * pesquisa (spam, duplicada, expirada e sem resposta nunca recebem CSAT —
+ * `SATISFACTION_SKIP_CLOSE_REASONS` no backend).
+ */
+export const SATISFACTION_SURVEY_CLOSE_REASONS = ['resolved', 'transferred', 'other'] as const;
+export type SatisfactionSurveyCloseReason = (typeof SATISFACTION_SURVEY_CLOSE_REASONS)[number];
+
+/**
+ * "CSAT — Satisfação do Cliente" (2026-09-23)
+ *
+ * Encerramento ESTIMULADO com pesquisa ESTIMULADA: o nó encerra a conversa pelo
+ * mesmo funil do chat e envia a pesquisa de satisfação do canal mesmo com ela
+ * desligada lá (e mesmo com agente de IA atendendo). Texto, opções e prazo de
+ * resposta são os do canal — sem configuração no canal, os de
+ * `DEFAULT_CHANNEL_SATISFACTION_CONFIG`. A captura da nota é a mesma do
+ * encerramento pelo canal (`satisfaction`/`satisfactionPending` na conversa).
+ *
+ * Conversa que já estava encerrada: o nó não envia (saída Falha).
+ */
+export interface SatisfactionSurveyActionConfig {
+  /**
+   * De onde vem a conversa — mesmo contrato do Transferir conversa.
+   * - 'context': a conversa do gatilho — ou, sem ela, a criada pelo nó logo antes
+   * - 'variable': `conversationId` traz um id ou uma `{{variável}}`
+   * @default 'context'
+   */
+  conversationSource?: 'context' | 'variable';
+  /** Conversa quando `conversationSource === 'variable'` (aceita {{variável}}). */
+  conversationId?: string;
+  /** Motivo do encerramento. @default 'resolved' */
+  closeReason?: SatisfactionSurveyCloseReason;
+}
+
+/**
+ * "Pergunta" (2026-09-28)
+ *
+ * Um nó só pergunta, espera a resposta e confere se ela serve. O laço de
+ * tentativas vive DENTRO do nó, porque o desenho não aceita ciclo (`CICLO`):
+ * resposta que não serve recebe a mensagem de "não entendi" e a pergunta
+ * continua valendo, até acabarem as tentativas. É o molde dos motores de chat
+ * de mercado (Twilio "Send & Wait For Reply", ManyChat "Data Collection",
+ * Botpress "Capture Information", Typebot, Blip).
+ *
+ * Saídas — fonte ÚNICA em `askQuestionOutputHandles`:
+ * - tipo `options`: uma por opção (`option-<id>`); `number` e `text`: `answered`;
+ * - `invalid`: as tentativas acabaram sem resposta que sirva (não existe no tipo `text`,
+ *   que aceita qualquer resposta);
+ * - `no_reply`: o prazo venceu sem resposta que sirva.
+ * Saída sem ligação encerra o caminho ali, sem erro.
+ */
+export const ASK_QUESTION_ANSWER_TYPES = ['options', 'number', 'text'] as const;
+export type AskQuestionAnswerType = (typeof ASK_QUESTION_ANSWER_TYPES)[number];
+
+export interface AskQuestionOption {
+  /**
+   * Id ESTÁVEL da opção. A marca da saída é `option-<id>`, nunca o índice:
+   * apagar a opção do meio não pode mandar as ligações das outras para o
+   * caminho errado (é o que acontece no Selecionar, que marca por `case-N`).
+   */
+  id: string;
+  /** Rótulo da saída — também vale como resposta. */
+  label: string;
+  /** Outras respostas aceitas para esta opção (ex.: "sim", "s", "👍"). */
+  keywords?: string[];
+}
+
+export interface AskQuestionActionConfig {
+  /**
+   * De onde vem a conversa — mesmo contrato do Transferir conversa.
+   * - 'context': a conversa do gatilho — ou, sem ela, a criada pelo nó logo antes
+   * - 'variable': `conversationId` traz um id ou uma `{{variável}}`
+   * @default 'context'
+   */
+  conversationSource?: 'context' | 'variable';
+  /** Conversa quando `conversationSource === 'variable'` (aceita {{variável}}). */
+  conversationId?: string;
+  /** Texto da pergunta (aceita {{variável}}). */
+  message: string;
+  answerType: AskQuestionAnswerType;
+  /** Opções do tipo `options` (2 a `ASK_QUESTION_MAX_OPTIONS`). */
+  options?: AskQuestionOption[];
+  /** Menor número aceito no tipo `number` (inteiro). */
+  numberMin?: number;
+  /** Maior número aceito no tipo `number` (inteiro). */
+  numberMax?: number;
+  /**
+   * Mensagem de "não entendi" (aceita {{variável}}). Vazia = texto padrão
+   * que lista as respostas aceitas (`defaultAskQuestionRetryMessage`).
+   */
+  retryMessage?: string;
+  /**
+   * Quantas vezes a mensagem de "não entendi" pode sair antes da saída
+   * `invalid`. 0 a `ASK_QUESTION_MAX_RETRIES_CAP`.
+   * @default ASK_QUESTION_DEFAULT_MAX_RETRIES
+   */
+  maxRetries?: number;
+  /**
+   * Prazo para responder, contado do envio da pergunta. Teto de 72 h
+   * (`WAIT_UNTIL_MAX_DURATION_MS`), o mesmo do Aguardar.
+   * @default ASK_QUESTION_DEFAULT_TIMEOUT
+   */
+  timeout?: { duration: number; unit: AskQuestionTimeoutUnit };
+  /** Variável que guarda o resultado — `{{variables.<saveAs>.answer}}`. */
+  saveAs?: string;
+}
+
+export type AskQuestionTimeoutUnit = Exclude<WaitDurationUnit, 'seconds'>;
+
+export const ASK_QUESTION_ANSWERED_HANDLE = 'answered';
+export const ASK_QUESTION_INVALID_HANDLE = 'invalid';
+export const ASK_QUESTION_NO_REPLY_HANDLE = 'no_reply';
+export const ASK_QUESTION_OPTION_HANDLE_PREFIX = 'option-';
+
+export const ASK_QUESTION_MAX_OPTIONS = 10;
+export const ASK_QUESTION_MAX_RETRIES_CAP = 5;
+export const ASK_QUESTION_DEFAULT_MAX_RETRIES = 2;
+export const ASK_QUESTION_DEFAULT_TIMEOUT: Readonly<{ duration: number; unit: AskQuestionTimeoutUnit }> = {
+  duration: 24,
+  unit: 'hours',
+};
+
+export function askQuestionOptionHandle(optionId: string): string {
+  return `${ASK_QUESTION_OPTION_HANDLE_PREFIX}${optionId}`;
+}
+
+/**
+ * Saídas do nó "Pergunta", na ordem da tela. Fonte ÚNICA para tela (alças),
+ * validador (ligação em saída que não existe) e compilador (um ramo por saída).
+ */
+export function askQuestionOutputHandles(config: Partial<AskQuestionActionConfig> | undefined): string[] {
+  const answerType = config?.answerType ?? 'options';
+  const handles: string[] = [];
+  if (answerType === 'options') {
+    for (const option of config?.options ?? []) {
+      if (typeof option?.id === 'string' && option.id.trim() !== '') {
+        handles.push(askQuestionOptionHandle(option.id));
+      }
+    }
+  } else {
+    handles.push(ASK_QUESTION_ANSWERED_HANDLE);
+  }
+  if (answerType !== 'text') handles.push(ASK_QUESTION_INVALID_HANDLE);
+  handles.push(ASK_QUESTION_NO_REPLY_HANDLE);
+  return handles;
+}
+
+/**
+ * Texto padrão da mensagem de "não entendi" quando o nó não traz um: diz ao
+ * cliente o que serve como resposta, que é o que tira alguém do laço.
+ */
+export function defaultAskQuestionRetryMessage(config: Partial<AskQuestionActionConfig> | undefined): string {
+  if (config?.answerType === 'number') {
+    const min = config.numberMin ?? 1;
+    const max = config.numberMax ?? 5;
+    return `Não entendi sua resposta. Responda só com um número de ${min} a ${max}, por favor.`;
+  }
+  const labels = (config?.options ?? [])
+    .map((option) => option.label.trim())
+    .filter((label) => label !== '');
+  const ultima = labels[labels.length - 1];
+  if (ultima === undefined) return 'Não entendi sua resposta. Pode responder de novo, por favor?';
+  const lista = labels.length === 1 ? ultima : `${labels.slice(0, -1).join(', ')} ou ${ultima}`;
+  return `Não entendi sua resposta. Responda com: ${lista}.`;
+}
+
+/**
+ * "Número sequencial" (2026-09-28)
+ *
+ * Entrega o próximo número de uma sequência com nome (ex.: o número da sorte de
+ * um sorteio): 0001, 0002… sem repetir, mesmo com vários clientes ao mesmo
+ * tempo. Quem recebeu cada número fica registrado — é a lista que o sorteio
+ * confere. A mesma execução pedindo de novo no mesmo nó recebe o MESMO número.
+ * A sequência é da empresa: dois fluxos com o mesmo nome dividem a numeração.
+ */
+export interface NextNumberActionConfig {
+  /**
+   * O que o nó numera (2026-09-29):
+   * - 'sequence': sequência com nome, só do fluxo (como sempre foi);
+   * - 'lead_coupon': cupom de sorteio do LEAD — o contador da empresa, o mesmo
+   *   da página de captura; o número vai para os cupons do lead.
+   * @default 'sequence'
+   */
+  target?: 'sequence' | 'lead_coupon';
+  /** De onde vem o lead no modo 'lead_coupon'. @default 'context' */
+  leadSource?: 'context' | 'variable';
+  /** Lead quando `leadSource === 'variable'` (id ou {{variável}}). */
+  leadId?: string;
+  /** Nome da sequência (modo 'sequence'). A chave ignora acento, maiúscula e espaço repetido. */
+  sequenceName: string;
+  /** Texto antes do número (ex.: "SORTE-"). */
+  prefix?: string;
+  /**
+   * Dígitos com zero à esquerda (0 = sem preencher).
+   * @default NEXT_NUMBER_DEFAULT_PAD_LENGTH
+   */
+  padLength?: number;
+  /** Primeiro número, quando a sequência ainda não existe. @default 1 */
+  startAt?: number;
+  /** Variável que guarda o resultado — `{{variables.<saveAs>.formatted}}`. */
+  saveAs?: string;
+}
+
+export const NEXT_NUMBER_DEFAULT_PAD_LENGTH = 4;
+export const NEXT_NUMBER_MAX_PAD_LENGTH = 12;
+
+/** Saída do nó "Número sequencial" — também vai para `variables[saveAs]`. */
+export interface NextNumberResult {
+  /** Nome da sequência, como no nó ("Cupons do lead" no modo 'lead_coupon'). */
+  sequence: string;
+  number: number;
+  /** Prefixo + número com zeros à esquerda (ex.: "0042"). */
+  formatted: string;
+  /** Lead que recebeu o cupom (modo 'lead_coupon'). */
+  leadId?: string;
+}
+
+/** Nome da "sequência" no modo 'lead_coupon' — é o que aparece em `sequence`. */
+export const NEXT_NUMBER_LEAD_COUPON_SEQUENCE = 'Cupons do lead';
+
+export function formatSequenceNumber(
+  number: number,
+  padLength: number = NEXT_NUMBER_DEFAULT_PAD_LENGTH,
+  prefix = '',
+): string {
+  return `${prefix}${String(number).padStart(Math.max(0, padLength), '0')}`;
+}
+
+/**
+ * "Salvar formulário" (2026-09-28)
+ *
+ * Junta valores do fluxo — em geral as respostas dos nós "Pergunta" — e grava
+ * como UMA resposta de formulário ligada ao lead: o mesmo lugar do formulário
+ * de captura (coleção `checklists`, `linkedEntity: lead`), que aparece na aba
+ * Formulários do lead. Nunca copia respostas para o documento do lead
+ * (NUNCA #80). Opção escrita pelo cliente vira a OPÇÃO do formulário (pelo
+ * rótulo ou pelo valor) e nota vira número.
+ *
+ * Saídas Sucesso/Falha (`WORKFLOW_SUCCESS_FAILURE_NODE_TYPES`). Falha =
+ * formulário apagado/desativado, lead não encontrado, campo obrigatório sem
+ * valor ou valor fora das opções — conferido ANTES de gravar, então a falha
+ * não deixa resposta pela metade no lead.
+ */
+export interface SaveFormResponseActionConfig {
+  /** Formulário (tipo `form`). */
+  formId: string;
+  /**
+   * Ligar a resposta a um lead (aparece na aba Formulários dele). Desligado, a
+   * resposta fica só no formulário. @default true
+   */
+  linkToLead?: boolean;
+  /**
+   * De onde vem o lead (quando `linkToLead`).
+   * - 'context': o lead do gatilho (ou o do contato do fluxo)
+   * - 'variable': `leadId` traz uma `{{variável}}` (ou um id)
+   * - 'specific': `leadId` é o lead escolhido na lista
+   * @default 'context'
+   */
+  leadSource?: 'context' | 'variable' | 'specific';
+  /** Lead quando `leadSource` é 'variable' ({{variável}}) ou 'specific' (id). */
+  leadId?: string;
+  /** Pergunta do formulário (id do campo) → valor: `{{variável}}` ou texto fixo. */
+  answers?: Record<string, string>;
+  /** Variável que guarda o resultado — `{{variables.<saveAs>.responseId}}`. */
+  saveAs?: string;
+}
+
+/** Saída do nó "Salvar formulário" — também vai para `variables[saveAs]`. */
+export interface SaveFormResponseResult {
+  success: boolean;
+  formId: string;
+  responseId?: string;
+  leadId?: string;
+  /** Quantas perguntas do formulário receberam valor. */
+  answered: number;
+  error?: string;
+}
+
+/**
+ * "Perguntar formulário" (2026-09-28)
+ *
+ * Faz TODAS as perguntas de um formulário pelo WhatsApp, uma por uma, com a
+ * mesma espera e conferência do nó "Pergunta" (prazo e "não entendi" por
+ * pergunta). O formulário é a fonte das perguntas: mudar o formulário muda a
+ * conversa, sem mexer no fluxo.
+ *
+ * Saídas: `answered` ("Respondeu" — todas as obrigatórias responderam) e
+ * `no_reply` ("Não respondeu" — o prazo de alguma pergunta venceu, ou uma
+ * obrigatória esgotou as tentativas). Pergunta OPCIONAL que esgota as
+ * tentativas é pulada.
+ *
+ * Para gravar as respostas no lead, ligue um "Salvar formulário" depois — os
+ * dois se completam (`{{variables.<saveAs>.answers.<id do campo>}}`).
+ */
+export interface AskFormActionConfig {
+  /** De onde vem a conversa — mesmo contrato do nó "Pergunta". @default 'context' */
+  conversationSource?: 'context' | 'variable';
+  conversationId?: string;
+  /** Formulário (tipo `form`) cujas perguntas serão feitas. */
+  formId: string;
+  /**
+   * Texto de cada pergunta no WhatsApp: id do campo → texto (aceita
+   * {{variável}}). Sem texto, vale `defaultAskFormQuestionText` (nome da
+   * pergunta, descrição e as opções numeradas).
+   */
+  messages?: Record<string, string>;
+  /**
+   * Perguntas do formulário que o nó NÃO faz (ids dos campos) — as que outro
+   * nó preenche, como o número da sorte do "Número sequencial".
+   */
+  skipFieldIds?: string[];
+  /** "Não entendi" por pergunta, 0 a `ASK_QUESTION_MAX_RETRIES_CAP`. @default ASK_QUESTION_DEFAULT_MAX_RETRIES */
+  maxRetries?: number;
+  /** Prazo de CADA pergunta. @default ASK_QUESTION_DEFAULT_TIMEOUT */
+  timeout?: { duration: number; unit: AskQuestionTimeoutUnit };
+  /** Variável com o resultado — `{{variables.<saveAs>.answers.<id do campo>.answer}}`. */
+  saveAs?: string;
+}
+
+/** Tipos de campo que o WhatsApp consegue perguntar e conferir. */
+export const ASK_FORM_ASKABLE_FIELD_TYPES: readonly FormFieldType[] = [
+  FormFieldType.SHORT_TEXT,
+  FormFieldType.LONG_TEXT,
+  FormFieldType.EMAIL,
+  FormFieldType.PHONE,
+  FormFieldType.URL,
+  FormFieldType.CPF,
+  FormFieldType.CNPJ,
+  FormFieldType.DATE,
+  FormFieldType.TIME,
+  FormFieldType.NUMBER,
+  FormFieldType.RATING,
+  FormFieldType.LINEAR_SCALE,
+  FormFieldType.SELECT,
+  FormFieldType.RADIO,
+  FormFieldType.CHECKBOX,
+  FormFieldType.MULTI_SELECT,
+];
+
+/** O campo é perguntado pelo nó? (título, parágrafo, foto e arquivo não são.) */
+export function isAskFormFieldAskable(field: Pick<FormField, 'type'>): boolean {
+  return (ASK_FORM_ASKABLE_FIELD_TYPES as readonly string[]).includes(field.type);
+}
+
+/** Faixa numérica que o campo aceita (nota: 1 a 5; escala: 0 a 10; número: livre). */
+export function askFormNumberRange(field: Pick<FormField, 'type' | 'validation'>): { min: number; max: number } {
+  const min = field.validation?.min;
+  const max = field.validation?.max;
+  if (field.type === FormFieldType.RATING) return { min: min ?? 1, max: max ?? 5 };
+  if (field.type === FormFieldType.LINEAR_SCALE) return { min: min ?? 0, max: max ?? 10 };
+  return { min: min ?? 0, max: max ?? Number.MAX_SAFE_INTEGER };
+}
+
+/**
+ * Texto padrão da pergunta no WhatsApp: nome em negrito, descrição, e — em
+ * campo de escolha — as opções numeradas (o número também vale como
+ * resposta). Fonte ÚNICA para a tela (prévia) e o motor.
+ */
+/**
+ * As opções do campo valem pelo NÚMERO da posição na lista? Não quando alguma
+ * opção já É um número ("1", "2", "3") — aí "2" seria ambíguo, e a lista sai
+ * com marcadores em vez de números.
+ */
+export function askFormOptionsByPosition(field: Pick<FormField, 'options'>): boolean {
+  const numero = /^\s*\d+\s*$/;
+  return !(field.options ?? []).some((o) => numero.test(o.label) || numero.test(o.value));
+}
+
+export function defaultAskFormQuestionText(
+  field: Pick<FormField, 'type' | 'label' | 'description' | 'options' | 'validation'>,
+): string {
+  const partes = [`*${field.label.trim()}*`];
+  const descricao = field.description?.trim();
+  if (descricao) partes.push(descricao);
+
+  const multipla = field.type === FormFieldType.CHECKBOX || field.type === FormFieldType.MULTI_SELECT;
+  if (field.type === FormFieldType.SELECT || field.type === FormFieldType.RADIO || multipla) {
+    const numerar = askFormOptionsByPosition(field);
+    const opcoes = (field.options ?? []).map((o, i) => (numerar ? `${i + 1}. ${o.label}` : `• ${o.label}`));
+    if (opcoes.length > 0) partes.push(opcoes.join('\n'));
+    if (multipla) partes.push('(pode escolher mais de uma, separadas por vírgula)');
+  } else if (!descricao && (field.type === FormFieldType.NUMBER || field.type === FormFieldType.RATING || field.type === FormFieldType.LINEAR_SCALE)) {
+    const { min, max } = askFormNumberRange(field);
+    if (max < Number.MAX_SAFE_INTEGER) partes.push(`(responda com um número de ${min} a ${max})`);
+  }
+  return partes.join('\n\n');
+}
+
+/**
+ * Perguntas que um "Salvar formulário" DEPOIS do "Perguntar formulário"
+ * preenche com OUTRO valor (número sequencial, texto fixo, outra Pergunta) —
+ * o nó não as faz: a resposta do cliente seria jogada fora (2026-09-28,
+ * número da sorte perguntado ao cliente no teste). Fonte ÚNICA para o motor e
+ * a tela. Devolve id do campo → nome do "Salvar formulário" que o preenche.
+ *
+ * Vale só com `saveAs`: sem ele o "Salvar formulário" nem tem como usar as
+ * respostas do questionário, e tudo pareceria "preenchido por outro valor".
+ * `saves` = os "Salvar formulário" que vêm DEPOIS deste nó no desenho.
+ */
+export function askFormFieldsFilledElsewhere(
+  ask: { formId?: string; saveAs?: string },
+  saves: Array<{ label: string; config: { formId?: string; answers?: Record<string, string> } }>,
+): Record<string, string> {
+  const saveAs = ask.saveAs?.trim();
+  if (!saveAs || !ask.formId) return {};
+  const proprio = `variables.${saveAs}.`;
+  const preenchidas: Record<string, string> = {};
+  for (const save of saves) {
+    if (save.config.formId !== ask.formId) continue;
+    for (const [fieldId, valor] of Object.entries(save.config.answers ?? {})) {
+      if (typeof valor !== 'string' || valor.trim() === '' || valor.includes(proprio)) continue;
+      if (!(fieldId in preenchidas)) preenchidas[fieldId] = save.label;
+    }
+  }
+  return preenchidas;
+}
+
+/** Saídas do nó "Perguntar formulário" — "Respondeu" e "Não respondeu". */
+export function askFormOutputHandles(): string[] {
+  return [ASK_QUESTION_ANSWERED_HANDLE, ASK_QUESTION_NO_REPLY_HANDLE];
+}
+
+/**
+ * Nós que perguntam ao cliente e DORMEM esperando a resposta ("Pergunta" e
+ * "Perguntar formulário"). Valem para os dois as mesmas regras de desenho:
+ * ramificam por saída, não entram em caminhos paralelos nem em repetição, e
+ * não convivem com a regra de cancelamento "Mensagem recebida".
+ */
+export const WORKFLOW_QUESTION_NODE_TYPES: readonly WorkflowNodeType[] = ['action_ask_question', 'action_ask_form'];
+
+export function isWorkflowQuestionNodeType(type: string): boolean {
+  return (WORKFLOW_QUESTION_NODE_TYPES as readonly string[]).includes(type);
+}
+
+/**
+ * Saídas de um nó de pergunta — fonte ÚNICA para tela, validador e
+ * compilador. `null` quando o tipo não é de pergunta.
+ */
+export function questionNodeOutputHandles(type: string, config: unknown): string[] | null {
+  if (type === 'action_ask_question') return askQuestionOutputHandles(config as Partial<AskQuestionActionConfig> | undefined);
+  if (type === 'action_ask_form') return askFormOutputHandles();
+  return null;
+}
+
+/** Uma pergunta do formulário depois do nó. */
+export interface AskFormAnswer {
+  /** Nome da pergunta no formulário. */
+  label: string;
+  /** Rótulo da opção (lista em múltipla escolha), número ou texto. `null` sem resposta. */
+  answer: string | number | string[] | null;
+  /** O que o cliente mandou, na ordem. */
+  text: string;
+  /** `skipped` = opcional que esgotou as tentativas. */
+  status: AskQuestionStatus | 'skipped';
+}
+
+/** Saída do nó "Perguntar formulário" — também vai para `variables[saveAs]`. */
+export interface AskFormResult {
+  path: string;
+  status: 'answered' | 'no_reply';
+  formId: string;
+  /** id do campo → resposta. Só as perguntas feitas. */
+  answers: Record<string, AskFormAnswer>;
+  /** Perguntas respondidas. */
+  answered: number;
+  /** Onde parou, quando `no_reply`. */
+  stoppedAt?: { fieldId: string; label: string; reason: 'invalid' | 'no_reply' };
+  conversationId?: string;
+}
+
+/** Como a pergunta terminou. */
+export type AskQuestionStatus = 'answered' | 'invalid' | 'no_reply';
+
+/**
+ * Saída do nó "Pergunta" — é também o que vai para `variables[saveAs]`.
+ */
+export interface AskQuestionResult {
+  /** Marca da saída seguida (`option-<id>`, `answered`, `invalid` ou `no_reply`). */
+  path: string;
+  status: AskQuestionStatus;
+  /** Rótulo da opção, número ou texto aceito. `null` sem resposta que sirva. */
+  answer: string | number | null;
+  /** Id da opção escolhida (tipo `options`). */
+  optionId?: string;
+  /** O que o cliente mandou, na ordem (mensagens juntas por quebra de linha). */
+  text: string;
+  /** Respostas que não serviram. */
+  attempts: number;
+  /** ISO 8601 — quando a resposta que serviu chegou. */
+  answeredAt?: string;
+  conversationId?: string;
 }
 
 /**
@@ -1335,6 +1907,12 @@ export type NodeConfig =
   | CreateTicketActionConfig
   | UpdateContactActionConfig
   | AssignActionConfig
+  | TransferConversationActionConfig
+  | SatisfactionSurveyActionConfig
+  | AskQuestionActionConfig
+  | AskFormActionConfig
+  | NextNumberActionConfig
+  | SaveFormResponseActionConfig
   | SetVariableActionConfig
   | IfControlConfig
   | SwitchControlConfig
@@ -1805,6 +2383,13 @@ export interface WorkflowExecution {
   /** Chave única vinda do gatilho de webhook com "uma execução por identifier"
    * ligado (2026-09-15). Índice único por workflow. */
   identifier?: string;
+  /**
+   * Nó-gatilho que disparou a execução (23/09/2026 — o workflow pode ter
+   * vários gatilhos, e cada um roda o fluxo a partir dele). A retomada de um
+   * fluxo que dormiu recompila a partir do MESMO gatilho. Ausente em execução
+   * anterior a essa data: vale o primeiro gatilho do desenho.
+   */
+  triggerNodeId?: string;
   appId: ObjectId;
   companyId: ObjectId;
   /**
@@ -1979,6 +2564,14 @@ export type WorkflowEventType =
   | 'lead.stage_changed'
   | 'lead.won'
   | 'lead.lost'
+  /**
+   * Captura por QR confirmada (2026-10-01): a pessoa preencheu a página de
+   * captura e mandou a mensagem de confirmação no WhatsApp. Publicado uma vez,
+   * na primeira confirmação do lead que a captura criou; o payload leva a
+   * conversa da confirmação (`conversationId`). Funil sem confirmação no
+   * WhatsApp não publica.
+   */
+  | 'lead.confirmed'
   // Tickets
   | 'ticket.created'
   | 'ticket.updated'
@@ -2272,6 +2865,12 @@ export const WORKFLOW_VALIDATION_CODES = [
   'FANOUT_HTTP_AGUARDA',
   /** Desenho sem nenhum gatilho (nem `skill_input`). */
   'SEM_GATILHO',
+  /**
+   * Gatilho que o motor não suporta repetido no mesmo workflow (23/09/2026):
+   * dois Agendamentos, ou duas Inatividades da mesma entidade — o relógio é um
+   * só por workflow e o segundo nunca dispararia.
+   */
+  'GATILHO_REPETIDO',
   /** Nó sem nenhuma ligação — nem entrando, nem saindo. */
   'NO_SOLTO',
   /** Campo obrigatório faltando ou fora do formato na configuração de um nó. */
@@ -2299,6 +2898,23 @@ export const WORKFLOW_VALIDATION_CODES = [
    * aba Cancelamento (spec 2026-09-20 §7.1, D12) — a saída só existe com regra.
    */
   'WAIT_FOR_CANCELADO_SEM_REGRA',
+  /**
+   * Ligação presa num ponto de saída que não é "Sucesso" nem "Falha", num nó
+   * que tem essas duas saídas (`nodeTypeHasSuccessFailureOutputs`, 2026-09-23).
+   */
+  'SUCESSO_FALHA_HANDLE_INVALIDO',
+  /**
+   * Ligação presa numa saída que o nó "Pergunta" não tem (2026-09-28) — em
+   * geral a opção foi apagada ou o tipo de resposta mudou
+   * (`askQuestionOutputHandles`).
+   */
+  'PERGUNTA_SAIDA_INVALIDA',
+  /**
+   * Regra "Mensagem recebida" da aba Cancelamento que continua valendo
+   * enquanto um nó "Pergunta" espera a resposta (2026-09-28): a própria
+   * resposta do cliente cancelaria o fluxo.
+   */
+  'PERGUNTA_CANCELADA_PELA_RESPOSTA',
 ] as const;
 
 export type WorkflowValidationCode = (typeof WORKFLOW_VALIDATION_CODES)[number];
@@ -2324,12 +2940,14 @@ export interface WorkflowValidationResponse {
  * `template` = template de MENSAGEM. `checklistTemplate` = modelo de checklist
  * (`Form` com `type: 'checklist'`) — são coleções diferentes, e tratar os dois
  * como `template` fazia o wizard de import oferecer templates de mensagem para
- * remapear o modelo do node "Criar Checklist".
+ * remapear o modelo do node "Criar Checklist". `form` = formulário
+ * (`Form` com `type: 'form'`) dos nós "Perguntar formulário" e "Salvar
+ * formulário" (2026-09-28).
  */
 export type WorkflowRefType =
   | 'channel' | 'funnel' | 'funnelStep' | 'pipeline' | 'pipelineStage'
   | 'agent' | 'template' | 'user' | 'team' | 'contact' | 'database'
-  | 'checklistTemplate' | 'unit';
+  | 'checklistTemplate' | 'unit' | 'form';
 
 export interface WorkflowExportRef {
   token: string;              // "$ref:1" — único no arquivo

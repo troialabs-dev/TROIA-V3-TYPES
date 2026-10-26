@@ -79,6 +79,9 @@ export enum NotificationType {
   SUBSCRIPTION_RENEWED = 'subscription_renewed',
   SUBSCRIPTION_EXPIRED = 'subscription_expired',
   SUBSCRIPTION_CANCELED = 'subscription_canceled',
+  // Créditos acabando (2026-10-05): 70/80/90/100% de consumo desde a última
+  // entrada de créditos, e os alertas que a empresa cadastra no Faturamento.
+  CREDIT_USAGE_ALERT = 'credit_usage_alert',
 
   // Team events
   TEAM_MEMBER_ADDED = 'team_member_added',
@@ -170,6 +173,9 @@ export const NOTIFICATION_TYPE_SUPPORTED_CHANNELS: Partial<Record<NotificationTy
   // (popup/notification → inApp/push; email → email). Resumo diário só in-app/push.
   [NotificationType.EVENT_REMINDER]: ['inApp', 'push', 'email'],
   [NotificationType.AGENDA_DAILY_SUMMARY]: ['inApp', 'push'],
+  // Créditos acabando: sino, e-mail e WhatsApp (decisão do dono 05/10/2026) —
+  // sem push nem som.
+  [NotificationType.CREDIT_USAGE_ALERT]: ['inApp', 'email', 'whatsapp'],
 };
 
 /**
@@ -182,9 +188,10 @@ export function getSupportedChannelsForType(type: NotificationType | string): No
 }
 
 /**
- * Canais que nascem **sem nenhum tipo marcado** na lista de fábrica
+ * Canais que nascem **quase sem nenhum tipo marcado** na lista de fábrica
  * (`getDefaultNotificationTypesForChannel`): e-mail e WhatsApp custam dinheiro
  * e invadem canal pessoal, então o usuário precisa marcar o que quer receber.
+ * A única coisa que nasce marcada neles é `OPT_IN_FACTORY_NOTIFICATION_TYPES`.
  *
  * ⚠️ Mudança de papel em 2026-08-17 (REGRA ÚNICA de despacho): esta lista NÃO
  * decide mais nada no dispatch. Desde a regra única, `types` ausente ou vazio
@@ -202,6 +209,23 @@ export const OPT_IN_NOTIFICATION_CHANNELS: readonly NotificationChannel[] = ['em
 export function isOptInNotificationChannel(channel: NotificationChannel): boolean {
   return OPT_IN_NOTIFICATION_CHANNELS.includes(channel);
 }
+
+/**
+ * Avisos que nascem marcados TAMBÉM em e-mail e WhatsApp (2026-10-05).
+ *
+ * Lista deliberadamente mínima. O aviso de créditos acabando entrou aqui por
+ * decisão do dono: em 29/09–05/10/2026 uma empresa ficou com saldo negativo
+ * três vezes e 86 respostas de atendentes falharam por falta de créditos sem
+ * ninguém ter sido avisado. Um aviso desses que só chega no sino não alcança
+ * quem não está com o sistema aberto. O usuário continua podendo desmarcar.
+ *
+ * Acrescentar um tipo aqui é decidir que TODO usuário novo passa a receber
+ * e-mail e WhatsApp dele sem ter pedido — mesma régua de
+ * `DEFAULT_NOTIFICATION_TYPES`: decisão consciente, nunca de carona.
+ */
+export const OPT_IN_FACTORY_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.CREDIT_USAGE_ALERT,
+];
 
 /**
  * Tipos deliberadamente FORA da lista de fábrica.
@@ -291,6 +315,11 @@ export const DEFAULT_NOTIFICATION_TYPES: readonly NotificationType[] = [
   NotificationType.SUBSCRIPTION_RENEWED,
   NotificationType.SUBSCRIPTION_EXPIRED,
   NotificationType.SUBSCRIPTION_CANCELED,
+  // Créditos acabando — nasce marcado para usuário NOVO. SEGUNDA EXCEÇÃO à
+  // regra do usuário existente (decisão do dono 05/10/2026): a migração
+  // 2026-10-05-001 marcou este aviso, em sino, e-mail e WhatsApp, em quem já
+  // existe e vê o módulo Empresa. Ver CLAUDE.md NUNCA #87.
+  NotificationType.CREDIT_USAGE_ALERT,
   // Team
   NotificationType.TEAM_MEMBER_ADDED,
   NotificationType.TEAM_MEMBER_REMOVED,
@@ -314,14 +343,16 @@ export const DEFAULT_NOTIFICATION_TYPES: readonly NotificationType[] = [
 
 /**
  * Lista de fábrica do canal: sino/push/som recebem `DEFAULT_NOTIFICATION_TYPES`,
- * e-mail/WhatsApp nascem vazios (nada marcado).
+ * e-mail/WhatsApp nascem só com `OPT_IN_FACTORY_NOTIFICATION_TYPES`.
  *
  * Retorna cópia mutável — o chamador grava no documento do usuário.
  */
 export function getDefaultNotificationTypesForChannel(
   channel: NotificationChannel,
 ): NotificationType[] {
-  return isOptInNotificationChannel(channel) ? [] : [...DEFAULT_NOTIFICATION_TYPES];
+  return isOptInNotificationChannel(channel)
+    ? [...OPT_IN_FACTORY_NOTIFICATION_TYPES]
+    : [...DEFAULT_NOTIFICATION_TYPES];
 }
 
 /**

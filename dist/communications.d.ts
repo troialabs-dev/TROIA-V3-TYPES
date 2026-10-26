@@ -11,6 +11,8 @@ export interface EmailData {
     from?: string;
     cc?: string | string[];
     bcc?: string | string[];
+    /** Address(es) that receive the answer when the recipient hits "Reply". */
+    replyTo?: string | string[];
     subject: string;
     html?: string;
     text?: string;
@@ -18,10 +20,14 @@ export interface EmailData {
 }
 export interface EmailAttachment {
     filename: string;
+    /** Base64 string or binary. Use `content` OR `path`. */
     content?: string | ArrayBuffer;
+    /** Public URL of the file — the provider downloads it at send time. */
     path?: string;
     contentType?: string;
     encoding?: string;
+    /** Inline attachment: the HTML references it with `src="cid:<contentId>"`. */
+    contentId?: string;
 }
 export interface MessageData {
     contact?: Contact;

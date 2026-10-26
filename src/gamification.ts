@@ -92,6 +92,13 @@ export interface RankingQuery {
   teamId?: string;
   unitId?: string;
   periodKey?: string;
+  /**
+   * Intervalo personalizado (`YYYY-MM-DD`, dias no fuso da empresa) — os dois
+   * juntos, sem `periodKey`. Soma os pontos pela data do evento (`occurredAt`)
+   * em vez do ciclo configurado.
+   */
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface RankingEntry {
@@ -112,7 +119,10 @@ export interface RankingEntry {
 
 export interface RankingResponse {
   scope: GamificationRankingScope;
+  /** Chave do ciclo mostrado; com intervalo personalizado, `YYYY-MM-DD..YYYY-MM-DD`. */
   periodKey: string;
+  /** Presente quando o ranking foi apurado por intervalo personalizado (`RankingQuery.startDate`/`endDate`). */
+  range?: { startDate: string; endDate: string };
   /** Período configurado pela empresa — a página de ranking não tem `gamification:read` para ler a config. */
   period: GamificationPeriod;
   /** Recortes ligados na config — monta o seletor do header com 1 request. Vazio = gamificação desligada. */

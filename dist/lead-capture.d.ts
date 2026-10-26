@@ -4,6 +4,7 @@
  *
  * Spec: DOCS/superpowers/specs/2026-08-20-qr-lead-capture-gamification-design.md §4.1
  */
+import type { LeadCaptureFields } from './funnels';
 export type LeadCaptureSessionStatus = 'waiting_scan' | 'filled' | 'confirmed' | 'form_completed' | 'done' | 'cancelled';
 /** Foto da config `Funnel.capture` no instante em que a sessão foi criada. */
 export interface LeadCaptureSnapshot {
@@ -15,7 +16,12 @@ export interface LeadCaptureSnapshot {
     channelName?: string;
     message?: string;
     consentText?: string;
+    /** Funil dá cupom a quem se cadastra (`FunnelCaptureConfig.issueCoupon`). */
+    issueCoupon?: boolean;
+    /** Legado: sessão criada antes de `fields` (vive até 7 dias no Redis). */
     emailRequired?: boolean;
+    /** Campos da página, já resolvidos na criação da sessão. Leia por `resolveLeadCaptureFields`. */
+    fields?: LeadCaptureFields;
 }
 export interface LeadCaptureSession {
     uuid: string;
@@ -54,6 +60,8 @@ export interface LeadCaptureSession {
         phone: string;
         email?: string;
     };
+    /** Cupom de sorteio dado no cadastro (funil com `issueCoupon`). */
+    coupon?: number;
     consent?: {
         acceptedAt: string;
         ip?: string;
@@ -119,13 +127,20 @@ export interface LeadCapturePublicInfo {
     };
     consentText: string;
     hasWhatsappStep: boolean;
+    /** Igual a `fields.email === 'required'` — mantido para a página antiga ainda em cache. */
     emailRequired: boolean;
+    /** Quais campos opcionais a página mostra e quais exige. */
+    fields: LeadCaptureFields;
     status: LeadCaptureSessionStatus;
 }
 export interface LeadCapturePublicSubmitRequest {
     name: string;
     phone: string;
     email?: string;
+    /** CPF com ou sem máscara — o servidor confere os dígitos. */
+    cpf?: string;
+    /** Data de nascimento `AAAA-MM-DD`. */
+    birthDate?: string;
     consent: true;
 }
 export interface LeadCapturePublicSubmitResponse {
@@ -134,6 +149,8 @@ export interface LeadCapturePublicSubmitResponse {
     code: string;
     /** `true` = sem Etapa 2, captura já confirmada ("Pronto!"). */
     done: boolean;
+    /** Cupom de sorteio dado neste cadastro, formatado (0012). */
+    coupon?: string;
 }
 /** TTL da sessão no Redis — 7 dias (D2). */
 export declare const LEAD_CAPTURE_SESSION_TTL_SECONDS: number;

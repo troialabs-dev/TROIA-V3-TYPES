@@ -10,6 +10,11 @@ export interface ContactAddress {
 }
 export interface PersonalInfo {
     birthDate?: string;
+    /**
+     * Documento do contato (CPF, CNPJ ou outro) — texto livre, gravado como foi
+     * digitado. A captura por QR grava o CPF já formatado (`000.000.000-00`).
+     */
+    document?: string;
     address?: ContactAddress;
 }
 export interface ContactIdentifiers {
@@ -35,6 +40,7 @@ export interface Contact extends CreatorStamp {
     identifiers: ContactIdentifiers;
     customerId?: string;
     personalInfo?: PersonalInfo;
+    notes?: string;
     assigneeId?: string;
     teamId?: string;
     lastInteractionAt?: string;
@@ -52,6 +58,7 @@ export interface CreateContactRequest {
     tags?: string[];
     identifiers: Partial<ContactIdentifiers>;
     personalInfo?: PersonalInfo;
+    notes?: string;
     customerId?: string;
     assigneeId?: string;
     teamId?: string;
@@ -62,6 +69,7 @@ export interface UpdateContactRequest {
     tags?: string[];
     identifiers?: Partial<ContactIdentifiers>;
     personalInfo?: PersonalInfo;
+    notes?: string;
     customerId?: string;
     assigneeId?: string;
     teamId?: string;

@@ -57,6 +57,8 @@ export * from './saved-cards';
 
 // Customer service modules
 export * from './contacts';
+// CPF e data de nascimento digitados pelo cliente (captura por QR)
+export * from './personal-data';
 export * from './customers';
 export * from './leads';
 export * from './funnels';
@@ -212,3 +214,10 @@ export * from './gamification';
 
 // Seller Dashboard — GET /api/leads/seller-dashboard (dentro do módulo CRM)
 export * from './seller-dashboard';
+
+// Tags — catálogo de tags do tenant (contatos, tickets, clientes, conversas).
+// O vínculo é pela PALAVRA, não por id: ver o cabeçalho de `tags.ts`.
+export * from './tags';
+
+// Relatório de CSAT — GET /api/reports/csat (permissão `reports-csat`)
+export * from './csat-report';

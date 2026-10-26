@@ -255,6 +255,8 @@ export declare enum ProviderId {
     AI_ALIBABA = "ai-alibaba",
     AI_MINIMAX = "ai-minimax",
     AI_META = "ai-meta",
+    /** Microsoft (14/10/2026) — só a transcrição MAI-Transcribe 2, pelo gateway. */
+    AI_MICROSOFT = "ai-microsoft",
     AI_ELEVENLABS = "ai-elevenlabs",
     AI_COHERE = "ai-cohere",
     /**

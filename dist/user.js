@@ -9,14 +9,19 @@ const notifications_1 = require("./notifications");
  * do usuário (`UsersRepository.create`) e pela migração `2026-08-17-002`, que
  * grava a mesma lista nos canais sem lista dos usuários já existentes.
  *
- * `enabled` preserva exatamente os defaults históricos (sino/push/som e e-mail
- * ligados, WhatsApp desligado); o que muda é `types`, que agora nasce EXPLÍCITO
- * em todo canal — sino/push/som com a lista de fábrica, e-mail/WhatsApp vazios.
+ * `types` nasce EXPLÍCITO em todo canal — sino/push/som com a lista de fábrica,
+ * e-mail/WhatsApp só com `OPT_IN_FACTORY_NOTIFICATION_TYPES` (hoje, o aviso de
+ * créditos acabando).
+ *
+ * `enabled` é ligado em todos os canais. O WhatsApp nascia desligado até
+ * 05/10/2026; passou a nascer ligado porque canal desligado barra TUDO, inclusive
+ * o aviso de créditos, e a lista dele continua sendo a que decide o que sai —
+ * com um tipo só marcado, só esse tipo é enviado.
  */
 function buildDefaultNotificationPreferences() {
     return {
         email: { enabled: true, types: (0, notifications_1.getDefaultNotificationTypesForChannel)('email') },
-        whatsapp: { enabled: false, types: (0, notifications_1.getDefaultNotificationTypesForChannel)('whatsapp') },
+        whatsapp: { enabled: true, types: (0, notifications_1.getDefaultNotificationTypesForChannel)('whatsapp') },
         push: { enabled: true, types: (0, notifications_1.getDefaultNotificationTypesForChannel)('push') },
         inApp: { enabled: true, types: (0, notifications_1.getDefaultNotificationTypesForChannel)('inApp') },
         sound: { enabled: true, types: (0, notifications_1.getDefaultNotificationTypesForChannel)('sound') },

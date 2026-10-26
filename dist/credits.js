@@ -1,7 +1,7 @@
 "use strict";
 // TROIA-V3-TYPES/src/credits.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CREDIT_CATEGORIES = exports.CreditCategory = void 0;
+exports.CREDIT_USAGE_THRESHOLDS = exports.CREDIT_CATEGORIES = exports.CreditCategory = void 0;
 // === Credit Categories (enum — single source of truth for debit calls) ===
 var CreditCategory;
 (function (CreditCategory) {
@@ -90,3 +90,6 @@ exports.CREDIT_CATEGORIES = {
     [CreditCategory.AI_CONVERSATION_QA]: { label: 'Análise de qualidade (conversa)', unit: 'per_action', hasDirection: false, hasProviderId: false },
     [CreditCategory.MCP_TOOL_CALL]: { label: 'Chamada de tool MCP', unit: 'per_action', hasDirection: false, hasProviderId: false },
 };
+// === Credit Usage Alert (embedded in Company.creditBalance) ===
+/** Faixas de consumo, em %, que disparam o aviso de créditos acabando. */
+exports.CREDIT_USAGE_THRESHOLDS = [70, 80, 90, 100];

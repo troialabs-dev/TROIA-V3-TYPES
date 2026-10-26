@@ -45,6 +45,11 @@ export interface Checklist {
      */
     createdByType?: ActorType;
     followerIds: string[];
+    /**
+     * Contato de quem respondeu (2026-09-29) — o contato do lead, quando a
+     * aplicação é ligada a um lead. Ausente = sem lead, ou anterior a 29/09/2026.
+     */
+    contactId?: string;
     unitId?: string;
     /**
      * Fencing de idempotência do sorteio diário ('YYYY-MM-DD' no fuso do

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FormStatus = exports.CONFORMITY_VALUES = exports.FormFieldType = void 0;
+exports.FormStatus = exports.FORM_CONFIRMATION_EMAIL_VARIABLES = exports.DEFAULT_FORM_CONTACT_DATA = exports.CONFORMITY_VALUES = exports.FormFieldType = void 0;
 // ============================================================
 // FORM FIELD TYPES
 // ============================================================
@@ -35,6 +35,15 @@ var FormFieldType;
  * CONFORMITY_VALUES - Valores aceitos pelo campo FormFieldType.CONFORMITY.
  */
 exports.CONFORMITY_VALUES = ['conforme', 'nao_conforme', 'na'];
+/** Formulário novo nasce pedindo nome e WhatsApp; e-mail opcional. */
+exports.DEFAULT_FORM_CONTACT_DATA = {
+    enabled: true,
+    requireName: true,
+    requirePhone: true,
+    requireEmail: false,
+};
+/** Variáveis do e-mail de confirmação — `{{nome}}` etc.; `respostas` vira a lista pergunta/resposta. */
+exports.FORM_CONFIRMATION_EMAIL_VARIABLES = ['nome', 'email', 'telefone', 'formulario', 'respostas'];
 // ============================================================
 // FORM STATUS
 // ============================================================

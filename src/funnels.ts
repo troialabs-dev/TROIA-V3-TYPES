@@ -2,6 +2,38 @@ import { PaginationQuery, ListResponse, AppAwareDocument, ActiveStatus } from '.
 import type { DistributionConfig } from './distribution';
 import type { AlertConfig } from './alerts';
 
+/** Como um campo da página pública de captura aparece para o cliente. */
+export type LeadCaptureFieldMode = 'hidden' | 'optional' | 'required';
+
+/** Campos da página pública que o gestor exibe/exige por funil. */
+export interface LeadCaptureFields {
+  email: LeadCaptureFieldMode;
+  cpf: LeadCaptureFieldMode;
+  birthDate: LeadCaptureFieldMode;
+}
+
+/** E-mail aparece opcional (como sempre foi); CPF e nascimento só quando ligados. */
+export const DEFAULT_LEAD_CAPTURE_FIELDS: LeadCaptureFields = {
+  email: 'optional',
+  cpf: 'hidden',
+  birthDate: 'hidden',
+};
+
+/**
+ * Campos efetivos da página — fonte única para a aba Captura, a página pública
+ * e o servidor. Lê `fields` e cai no legado `emailRequired` quando o e-mail
+ * ainda não foi configurado pela aba nova (funil antigo, sessão antiga no Redis).
+ */
+export function resolveLeadCaptureFields(
+  config: { fields?: Partial<LeadCaptureFields>; emailRequired?: boolean } | null | undefined,
+): LeadCaptureFields {
+  return {
+    email: config?.fields?.email ?? (config?.emailRequired === true ? 'required' : DEFAULT_LEAD_CAPTURE_FIELDS.email),
+    cpf: config?.fields?.cpf ?? DEFAULT_LEAD_CAPTURE_FIELDS.cpf,
+    birthDate: config?.fields?.birthDate ?? DEFAULT_LEAD_CAPTURE_FIELDS.birthDate,
+  };
+}
+
 /**
  * Captura de leads por QR Code (D16). "Ligada" = objeto presente (qualquer
  * campo). `channelId` preenchido = Etapa 2 (confirmação no WhatsApp) ligada.
@@ -16,8 +48,23 @@ export interface FunnelCaptureConfig {
   message?: string;
   /** Texto LGPD da página pública (D9). */
   consentText?: string;
-  /** Página pública: e-mail obrigatório (default: opcional). */
+  /**
+   * Legado (até 2026-10-21): e-mail obrigatório. Só vale quando `fields.email`
+   * não existe — a aba Captura grava em `fields` e apaga este. Leia sempre por
+   * `resolveLeadCaptureFields`.
+   */
   emailRequired?: boolean;
+  /**
+   * Campos opcionais da página pública (nome e WhatsApp são fixos). Campo
+   * ausente segue `DEFAULT_LEAD_CAPTURE_FIELDS`. Leia por `resolveLeadCaptureFields`.
+   */
+  fields?: Partial<LeadCaptureFields>;
+  /**
+   * Dar cupom de sorteio a quem se cadastrar pela página (2026-09-29). O
+   * número vai para os cupons do lead e para a variável `{{cupom}}` da
+   * mensagem. Cadastro de quem já tinha lead aberto no funil não ganha cupom.
+   */
+  issueCoupon?: boolean;
 }
 
 /**

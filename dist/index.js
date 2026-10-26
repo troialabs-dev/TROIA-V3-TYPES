@@ -63,6 +63,8 @@ __exportStar(require("./payments"), exports);
 __exportStar(require("./saved-cards"), exports);
 // Customer service modules
 __exportStar(require("./contacts"), exports);
+// CPF e data de nascimento digitados pelo cliente (captura por QR)
+__exportStar(require("./personal-data"), exports);
 __exportStar(require("./customers"), exports);
 __exportStar(require("./leads"), exports);
 __exportStar(require("./funnels"), exports);
@@ -175,3 +177,8 @@ __exportStar(require("./lead-capture"), exports);
 __exportStar(require("./gamification"), exports);
 // Seller Dashboard — GET /api/leads/seller-dashboard (dentro do módulo CRM)
 __exportStar(require("./seller-dashboard"), exports);
+// Tags — catálogo de tags do tenant (contatos, tickets, clientes, conversas).
+// O vínculo é pela PALAVRA, não por id: ver o cabeçalho de `tags.ts`.
+__exportStar(require("./tags"), exports);
+// Relatório de CSAT — GET /api/reports/csat (permissão `reports-csat`)
+__exportStar(require("./csat-report"), exports);

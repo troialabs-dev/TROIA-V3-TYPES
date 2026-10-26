@@ -149,6 +149,8 @@ export interface AIAgentEscalationConfig {
   teamId?: string;
   /** Obrigatório quando defaultTarget = 'user' */
   userId?: string;
+  // "Priorizar o responsável pelo lead" saiu daqui em 2026-10-01: virou opção
+  // da distribuição do CANAL (`DistributionConfig.preferLeadOwner`).
 }
 
 /**

@@ -3,7 +3,7 @@
 // AI PROVIDER CONFIGURATIONS
 // ============================================================================
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AI_MODELS = void 0;
+exports.DEFAULT_AGENT_MODEL = exports.AI_MODELS = void 0;
 exports.getAgentModels = getAgentModels;
 exports.getViableModels = getViableModels;
 exports.getProviderFromModel = getProviderFromModel;
@@ -52,7 +52,7 @@ exports.AI_MODELS = [
         gatewaySlug: 'openai/gpt-5-mini',
         name: 'GPT-5 Mini',
         provider: 'openai',
-        features: ['pdf', 'image', 'tools'],
+        features: ['pdf', 'image', 'tools', 'reasoning'],
         highlight: 'GPT-5 econômico',
         pricing: { input: 0.25, output: 1.00 },
         contextWindow: 128_000,
@@ -68,6 +68,23 @@ exports.AI_MODELS = [
         pricing: { input: 0.40, output: 1.60 },
         contextWindow: 1_000_000,
         maxOutputTokens: 32_768,
+    },
+    // Modelo padrão desde 14/10/2026. Sonda com 544 turnos reais (17 empresas):
+    // nota 6,7 contra 5,9 do gpt-4.1-mini, menos erros graves (22% × 29%), usa
+    // a ferramenta de envio em 100% dos turnos — a 1/6 do custo. O preço por
+    // faixa (US$ 0,20/0,75 acima de 272 mil tokens por chamada) não entra:
+    // é 0,1% das nossas chamadas.
+    {
+        id: 'gpt-6-luna',
+        gatewaySlug: 'openai/gpt-6-luna',
+        name: 'GPT-6 Luna',
+        provider: 'openai',
+        features: ['pdf', 'image', 'tools'],
+        highlight: 'Padrão da plataforma: preciso, rápido e econômico',
+        pricing: { input: 0.10, output: 0.50 },
+        contextWindow: 1_050_000,
+        maxOutputTokens: 128_000,
+        reasoningEffort: 'none',
     },
     {
         id: 'o4-mini',
@@ -85,7 +102,7 @@ exports.AI_MODELS = [
         gatewaySlug: 'openai/gpt-5',
         name: 'GPT-5',
         provider: 'openai',
-        features: ['pdf', 'image', 'tools'],
+        features: ['pdf', 'image', 'tools', 'reasoning'],
         highlight: 'Máxima inteligência OpenAI',
         pricing: { input: 1.25, output: 10.00 },
         contextWindow: 256_000,
@@ -398,7 +415,7 @@ exports.AI_MODELS = [
         gatewaySlug: 'google/gemini-3-flash',
         name: 'Gemini 3 Flash',
         provider: 'google',
-        features: ['pdf', 'image', 'tools'],
+        features: ['pdf', 'image', 'tools', 'reasoning'],
         highlight: 'Gemini 3 rápido, 1M de contexto',
         pricing: { input: 0.5, output: 3.0 },
         contextWindow: 1_000_000,
@@ -480,6 +497,11 @@ exports.AI_MODELS = [
         pricing: { input: 1.35, output: 5.4 },
         contextWindow: 128_000,
         maxOutputTokens: 8_192,
+        // Fora do seletor desde 24/09/2026 (decisão do dono): pelo gateway ele não
+        // chama ferramenta de verdade — escreve a chamada como texto — e o agente
+        // do TroiaChat só fala com o cliente por ferramenta. Não respondeu em
+        // nenhuma rodada da bateria de modelos.
+        deprecated: true,
     },
     {
         id: 'glm-5.3',
@@ -497,7 +519,7 @@ exports.AI_MODELS = [
         gatewaySlug: 'zai/glm-5.3-flashx',
         name: 'GLM 5.3 FlashX',
         provider: 'zai',
-        features: ['image', 'tools'],
+        features: ['image', 'tools', 'reasoning'],
         highlight: 'Meio-termo entre Flash e completo',
         pricing: { input: 0.37, output: 1.25 },
         contextWindow: 1_000_000,
@@ -640,11 +662,16 @@ exports.AI_MODELS = [
         gatewaySlug: 'minimax/minimax-m3',
         name: 'MiniMax M3',
         provider: 'minimax',
-        features: ['pdf', 'image', 'tools'],
+        features: ['pdf', 'image', 'tools', 'reasoning'],
         highlight: 'MiniMax atual, 512k de contexto',
         pricing: { input: 0.3, output: 1.2 },
         contextWindow: 512_000,
         maxOutputTokens: 512_000,
+        // Fora do seletor desde 24/09/2026 (decisão do dono): no fluxo do agente se
+        // perde nas instruções — negou a foto que elas mandavam enviar e chegou a
+        // inventar uma persona ("Mila da MV Refrigeração") que não existe em lugar
+        // nenhum. Numa conversa simples obedece; com o prompt do agente, não.
+        deprecated: true,
     },
     {
         id: 'llama-3.3-70b',
@@ -656,6 +683,10 @@ exports.AI_MODELS = [
         pricing: { input: 0.72, output: 0.72 },
         contextWindow: 128_000,
         maxOutputTokens: 8_192,
+        // Fora do seletor desde 24/09/2026 (decisão do dono): depois da primeira
+        // mensagem passa a escrever a chamada de ferramenta como JSON em texto,
+        // mesmo com o reestímulo — sem foto e sem transferência na bateria.
+        deprecated: true,
     },
     {
         id: 'llama-4-maverick',
@@ -788,10 +819,30 @@ exports.AI_MODELS = [
         purpose: 'stt',
         features: [],
         highlight: 'Transcrição alternativa da OpenAI',
-        // US$ 0.00000125 por segundo = US$ 0.000075 por minuto — 80× mais barato
-        // que o Whisper, e era cobrado igual enquanto os dois caíam no preço
-        // genérico da categoria.
-        audioPricing: { perMinute: 0.000075 },
+        // Cobrado por TOKEN de áudio (US$ 1,25 por 1M), não por segundo — o valor
+        // antigo aqui (US$ 0,000075/min) tratava o preço do token como preço do
+        // segundo e saía 24× abaixo. Medido em 14/10/2026 pelo custo que o
+        // gateway devolveu em 110 áudios reais (49 min): US$ 0,0018 por minuto.
+        audioPricing: { perMinute: 0.0018 },
+        pricing: { input: 0, output: 0 },
+        contextWindow: 0,
+        maxOutputTokens: 0,
+    },
+    // Transcrição padrão desde 14/10/2026. Em 110 áudios reais de clientes
+    // (49 min), julgados por um modelo que ouviu cada áudio: nota 9,2 contra
+    // 7,4 do Whisper, erro que muda o sentido em 17% contra 45%, e 3,6× mais
+    // barato. Só existe pelo Vercel AI Gateway.
+    {
+        id: 'mai-transcribe-2',
+        gatewaySlug: 'microsoft/mai-transcribe-2',
+        name: 'MAI-Transcribe 2',
+        provider: 'microsoft',
+        purpose: 'stt',
+        features: [],
+        highlight: 'Transcrição padrão: a mais fiel medida e a mais barata',
+        // US$ 0,00002778 por segundo = US$ 0,0017 por minuto (catálogo do
+        // gateway, conferido pelo custo cobrado nos 110 áudios).
+        audioPricing: { perMinute: 0.0017 },
         pricing: { input: 0, output: 0 },
         contextWindow: 0,
         maxOutputTokens: 0,
@@ -935,6 +986,12 @@ exports.AI_MODELS = [
         maxOutputTokens: 32_768,
     },
 ];
+/**
+ * Modelo com que todo agente NOVO nasce (tela, assistente de criação, API e
+ * MCP). Um lugar só: até 14/10/2026 eram três valores soltos, e a API criava
+ * em `gpt-4.1` — 5× o preço do que a tela usava.
+ */
+exports.DEFAULT_AGENT_MODEL = 'gpt-6-luna';
 // ============================================================================
 // AI MODEL HELPERS
 // ============================================================================

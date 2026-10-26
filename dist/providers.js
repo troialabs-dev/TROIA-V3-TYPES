@@ -66,6 +66,8 @@ var ProviderId;
     ProviderId["AI_ALIBABA"] = "ai-alibaba";
     ProviderId["AI_MINIMAX"] = "ai-minimax";
     ProviderId["AI_META"] = "ai-meta";
+    /** Microsoft (14/10/2026) — só a transcrição MAI-Transcribe 2, pelo gateway. */
+    ProviderId["AI_MICROSOFT"] = "ai-microsoft";
     ProviderId["AI_ELEVENLABS"] = "ai-elevenlabs";
     ProviderId["AI_COHERE"] = "ai-cohere";
     /**
@@ -143,6 +145,7 @@ exports.PROVIDER_CATEGORY = {
     [ProviderId.AI_ALIBABA]: 'ai',
     [ProviderId.AI_MINIMAX]: 'ai',
     [ProviderId.AI_META]: 'ai',
+    [ProviderId.AI_MICROSOFT]: 'ai',
     [ProviderId.AI_ELEVENLABS]: 'ai',
     [ProviderId.AI_COHERE]: 'ai',
     [ProviderId.AI_VERCEL_GATEWAY]: 'ai',

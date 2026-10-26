@@ -1,9 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WORKFLOW_VALIDATION_CODES = exports.WORKFLOW_NODE_INPUT_RETENTION_DAYS = exports.WORKFLOW_NODE_INPUT_MAX_BYTES = exports.WORKFLOW_EXECUTION_SUMMARY_RING_SIZE = exports.WORKFLOW_EXECUTION_RETENTION_DAYS = exports.WORKFLOW_EXECUTION_STATS_BUCKETS = exports.WORKFLOW_EXECUTION_STATS_WINDOW_DAYS = exports.WAIT_UNTIL_MAX_DURATION_MS = exports.WAIT_CANCEL_EVENT_ACTORS = exports.WORKFLOW_WAIT_CANCELLED_HANDLE = exports.WORKFLOW_CANCELLATION_EVENT_TYPES = exports.WORKFLOW_CANCELLATION_EVENTS = exports.WORKFLOW_EVENT_ACTORS = exports.BUSINESS_HOURS_NODE_TYPES = exports.WORKFLOW_EXECUTION_IDENTIFIER_MAX_LENGTH = exports.WORKFLOW_CONDITION_OPERATORS = exports.WORKFLOW_EXECUTION_OPEN_STATUSES = exports.WORKFLOW_EXECUTION_STATUSES = exports.WORKFLOW_AUTO_PAUSE_REASONS = exports.WORKFLOW_FREQUENT_FAILURES_ALERT_INTERVAL_HOURS = exports.WORKFLOW_FREQUENT_FAILURES_THRESHOLD = exports.WORKFLOW_FREQUENT_FAILURES_WINDOW = exports.WORKFLOW_AUTO_PAUSE_CONSECUTIVE_FAILURES = exports.WORKFLOW_STATUSES = exports.WORKFLOW_FILTERABLE_NODE_TYPES = exports.WORKFLOW_NODE_TYPES = void 0;
+exports.WORKFLOW_VALIDATION_CODES = exports.WORKFLOW_NODE_INPUT_RETENTION_DAYS = exports.WORKFLOW_NODE_INPUT_MAX_BYTES = exports.WORKFLOW_EXECUTION_SUMMARY_RING_SIZE = exports.WORKFLOW_EXECUTION_RETENTION_DAYS = exports.WORKFLOW_EXECUTION_STATS_BUCKETS = exports.WORKFLOW_EXECUTION_STATS_WINDOW_DAYS = exports.WAIT_UNTIL_MAX_DURATION_MS = exports.WAIT_CANCEL_EVENT_ACTORS = exports.WORKFLOW_WAIT_CANCELLED_HANDLE = exports.WORKFLOW_CANCELLATION_EVENT_TYPES = exports.WORKFLOW_CANCELLATION_EVENTS = exports.WORKFLOW_EVENT_ACTORS = exports.WORKFLOW_QUESTION_NODE_TYPES = exports.ASK_FORM_ASKABLE_FIELD_TYPES = exports.NEXT_NUMBER_LEAD_COUPON_SEQUENCE = exports.NEXT_NUMBER_MAX_PAD_LENGTH = exports.NEXT_NUMBER_DEFAULT_PAD_LENGTH = exports.ASK_QUESTION_DEFAULT_TIMEOUT = exports.ASK_QUESTION_DEFAULT_MAX_RETRIES = exports.ASK_QUESTION_MAX_RETRIES_CAP = exports.ASK_QUESTION_MAX_OPTIONS = exports.ASK_QUESTION_OPTION_HANDLE_PREFIX = exports.ASK_QUESTION_NO_REPLY_HANDLE = exports.ASK_QUESTION_INVALID_HANDLE = exports.ASK_QUESTION_ANSWERED_HANDLE = exports.ASK_QUESTION_ANSWER_TYPES = exports.SATISFACTION_SURVEY_CLOSE_REASONS = exports.BUSINESS_HOURS_NODE_TYPES = exports.WORKFLOW_EXECUTION_IDENTIFIER_MAX_LENGTH = exports.WORKFLOW_CONDITION_OPERATORS = exports.WORKFLOW_EXECUTION_OPEN_STATUSES = exports.WORKFLOW_EXECUTION_STATUSES = exports.WORKFLOW_AUTO_PAUSE_REASONS = exports.WORKFLOW_FREQUENT_FAILURES_ALERT_INTERVAL_HOURS = exports.WORKFLOW_FREQUENT_FAILURES_THRESHOLD = exports.WORKFLOW_FREQUENT_FAILURES_WINDOW = exports.WORKFLOW_AUTO_PAUSE_CONSECUTIVE_FAILURES = exports.WORKFLOW_STATUSES = exports.WORKFLOW_SUCCESS_FAILURE_NODE_TYPES = exports.WORKFLOW_FAILURE_HANDLE = exports.WORKFLOW_SUCCESS_HANDLE = exports.WORKFLOW_FILTERABLE_NODE_TYPES = exports.WORKFLOW_NODE_TYPES = void 0;
 exports.nodeTypeAcceptsFilters = nodeTypeAcceptsFilters;
+exports.nodeTypeHasSuccessFailureOutputs = nodeTypeHasSuccessFailureOutputs;
+exports.askQuestionOptionHandle = askQuestionOptionHandle;
+exports.askQuestionOutputHandles = askQuestionOutputHandles;
+exports.defaultAskQuestionRetryMessage = defaultAskQuestionRetryMessage;
+exports.formatSequenceNumber = formatSequenceNumber;
+exports.isAskFormFieldAskable = isAskFormFieldAskable;
+exports.askFormNumberRange = askFormNumberRange;
+exports.askFormOptionsByPosition = askFormOptionsByPosition;
+exports.defaultAskFormQuestionText = defaultAskFormQuestionText;
+exports.askFormFieldsFilledElsewhere = askFormFieldsFilledElsewhere;
+exports.askFormOutputHandles = askFormOutputHandles;
+exports.isWorkflowQuestionNodeType = isWorkflowQuestionNodeType;
+exports.questionNodeOutputHandles = questionNodeOutputHandles;
 exports.waitHasCancelledOutput = waitHasCancelledOutput;
 exports.readWaitCancelEvents = readWaitCancelEvents;
+const forms_1 = require("./forms");
 // ============================================================
 // WORKFLOW TYPES
 // ============================================================
@@ -40,6 +54,12 @@ exports.WORKFLOW_NODE_TYPES = [
     'action_assign',
     'action_set_variable',
     'action_create_conversation',
+    'action_transfer_conversation',
+    'action_satisfaction_survey',
+    'action_ask_question',
+    'action_ask_form',
+    'action_next_number',
+    'action_save_form_response',
     'action_create_ticket',
     'action_internal_notification',
     'action_find_leads',
@@ -76,6 +96,26 @@ exports.WORKFLOW_NODE_TYPES = [
 exports.WORKFLOW_FILTERABLE_NODE_TYPES = exports.WORKFLOW_NODE_TYPES.filter((t) => t.startsWith('action_') || t === 'ai_agent' || t === 'ai_agent_inline' || t === 'control_wait_for' || t === 'skill_input');
 function nodeTypeAcceptsFilters(type) {
     return exports.WORKFLOW_FILTERABLE_NODE_TYPES.includes(type);
+}
+/**
+ * Saídas "Sucesso" e "Falha" (2026-09-23, nó Transferir conversa): nó de ação
+ * que pode NÃO conseguir fazer o que promete ganha duas saídas, e o desenho
+ * decide o que acontece em cada caso. Fonte ÚNICA para a tela (alças do nó),
+ * o validador e o compilador.
+ *
+ * O nó devolve `{ success: boolean }`: `true` segue pela saída `success`,
+ * `false` pela `failure`. Sem ligação na saída Falha o nó LANÇA quando não
+ * consegue — a execução falha com o motivo, em vez de terminar calada.
+ */
+exports.WORKFLOW_SUCCESS_HANDLE = 'success';
+exports.WORKFLOW_FAILURE_HANDLE = 'failure';
+exports.WORKFLOW_SUCCESS_FAILURE_NODE_TYPES = [
+    'action_transfer_conversation',
+    'action_satisfaction_survey',
+    'action_save_form_response',
+];
+function nodeTypeHasSuccessFailureOutputs(type) {
+    return exports.WORKFLOW_SUCCESS_FAILURE_NODE_TYPES.includes(type);
 }
 /**
  * Workflow Statuses — runtime constant + derived type.
@@ -163,6 +203,214 @@ exports.BUSINESS_HOURS_NODE_TYPES = [
     'ai_agent',
     'ai_agent_inline',
 ];
+/**
+ * Motivos de encerramento que o nó CSAT oferece: só os que NÃO bloqueiam a
+ * pesquisa (spam, duplicada, expirada e sem resposta nunca recebem CSAT —
+ * `SATISFACTION_SKIP_CLOSE_REASONS` no backend).
+ */
+exports.SATISFACTION_SURVEY_CLOSE_REASONS = ['resolved', 'transferred', 'other'];
+/**
+ * "Pergunta" (2026-09-28)
+ *
+ * Um nó só pergunta, espera a resposta e confere se ela serve. O laço de
+ * tentativas vive DENTRO do nó, porque o desenho não aceita ciclo (`CICLO`):
+ * resposta que não serve recebe a mensagem de "não entendi" e a pergunta
+ * continua valendo, até acabarem as tentativas. É o molde dos motores de chat
+ * de mercado (Twilio "Send & Wait For Reply", ManyChat "Data Collection",
+ * Botpress "Capture Information", Typebot, Blip).
+ *
+ * Saídas — fonte ÚNICA em `askQuestionOutputHandles`:
+ * - tipo `options`: uma por opção (`option-<id>`); `number` e `text`: `answered`;
+ * - `invalid`: as tentativas acabaram sem resposta que sirva (não existe no tipo `text`,
+ *   que aceita qualquer resposta);
+ * - `no_reply`: o prazo venceu sem resposta que sirva.
+ * Saída sem ligação encerra o caminho ali, sem erro.
+ */
+exports.ASK_QUESTION_ANSWER_TYPES = ['options', 'number', 'text'];
+exports.ASK_QUESTION_ANSWERED_HANDLE = 'answered';
+exports.ASK_QUESTION_INVALID_HANDLE = 'invalid';
+exports.ASK_QUESTION_NO_REPLY_HANDLE = 'no_reply';
+exports.ASK_QUESTION_OPTION_HANDLE_PREFIX = 'option-';
+exports.ASK_QUESTION_MAX_OPTIONS = 10;
+exports.ASK_QUESTION_MAX_RETRIES_CAP = 5;
+exports.ASK_QUESTION_DEFAULT_MAX_RETRIES = 2;
+exports.ASK_QUESTION_DEFAULT_TIMEOUT = {
+    duration: 24,
+    unit: 'hours',
+};
+function askQuestionOptionHandle(optionId) {
+    return `${exports.ASK_QUESTION_OPTION_HANDLE_PREFIX}${optionId}`;
+}
+/**
+ * Saídas do nó "Pergunta", na ordem da tela. Fonte ÚNICA para tela (alças),
+ * validador (ligação em saída que não existe) e compilador (um ramo por saída).
+ */
+function askQuestionOutputHandles(config) {
+    const answerType = config?.answerType ?? 'options';
+    const handles = [];
+    if (answerType === 'options') {
+        for (const option of config?.options ?? []) {
+            if (typeof option?.id === 'string' && option.id.trim() !== '') {
+                handles.push(askQuestionOptionHandle(option.id));
+            }
+        }
+    }
+    else {
+        handles.push(exports.ASK_QUESTION_ANSWERED_HANDLE);
+    }
+    if (answerType !== 'text')
+        handles.push(exports.ASK_QUESTION_INVALID_HANDLE);
+    handles.push(exports.ASK_QUESTION_NO_REPLY_HANDLE);
+    return handles;
+}
+/**
+ * Texto padrão da mensagem de "não entendi" quando o nó não traz um: diz ao
+ * cliente o que serve como resposta, que é o que tira alguém do laço.
+ */
+function defaultAskQuestionRetryMessage(config) {
+    if (config?.answerType === 'number') {
+        const min = config.numberMin ?? 1;
+        const max = config.numberMax ?? 5;
+        return `Não entendi sua resposta. Responda só com um número de ${min} a ${max}, por favor.`;
+    }
+    const labels = (config?.options ?? [])
+        .map((option) => option.label.trim())
+        .filter((label) => label !== '');
+    const ultima = labels[labels.length - 1];
+    if (ultima === undefined)
+        return 'Não entendi sua resposta. Pode responder de novo, por favor?';
+    const lista = labels.length === 1 ? ultima : `${labels.slice(0, -1).join(', ')} ou ${ultima}`;
+    return `Não entendi sua resposta. Responda com: ${lista}.`;
+}
+exports.NEXT_NUMBER_DEFAULT_PAD_LENGTH = 4;
+exports.NEXT_NUMBER_MAX_PAD_LENGTH = 12;
+/** Nome da "sequência" no modo 'lead_coupon' — é o que aparece em `sequence`. */
+exports.NEXT_NUMBER_LEAD_COUPON_SEQUENCE = 'Cupons do lead';
+function formatSequenceNumber(number, padLength = exports.NEXT_NUMBER_DEFAULT_PAD_LENGTH, prefix = '') {
+    return `${prefix}${String(number).padStart(Math.max(0, padLength), '0')}`;
+}
+/** Tipos de campo que o WhatsApp consegue perguntar e conferir. */
+exports.ASK_FORM_ASKABLE_FIELD_TYPES = [
+    forms_1.FormFieldType.SHORT_TEXT,
+    forms_1.FormFieldType.LONG_TEXT,
+    forms_1.FormFieldType.EMAIL,
+    forms_1.FormFieldType.PHONE,
+    forms_1.FormFieldType.URL,
+    forms_1.FormFieldType.CPF,
+    forms_1.FormFieldType.CNPJ,
+    forms_1.FormFieldType.DATE,
+    forms_1.FormFieldType.TIME,
+    forms_1.FormFieldType.NUMBER,
+    forms_1.FormFieldType.RATING,
+    forms_1.FormFieldType.LINEAR_SCALE,
+    forms_1.FormFieldType.SELECT,
+    forms_1.FormFieldType.RADIO,
+    forms_1.FormFieldType.CHECKBOX,
+    forms_1.FormFieldType.MULTI_SELECT,
+];
+/** O campo é perguntado pelo nó? (título, parágrafo, foto e arquivo não são.) */
+function isAskFormFieldAskable(field) {
+    return exports.ASK_FORM_ASKABLE_FIELD_TYPES.includes(field.type);
+}
+/** Faixa numérica que o campo aceita (nota: 1 a 5; escala: 0 a 10; número: livre). */
+function askFormNumberRange(field) {
+    const min = field.validation?.min;
+    const max = field.validation?.max;
+    if (field.type === forms_1.FormFieldType.RATING)
+        return { min: min ?? 1, max: max ?? 5 };
+    if (field.type === forms_1.FormFieldType.LINEAR_SCALE)
+        return { min: min ?? 0, max: max ?? 10 };
+    return { min: min ?? 0, max: max ?? Number.MAX_SAFE_INTEGER };
+}
+/**
+ * Texto padrão da pergunta no WhatsApp: nome em negrito, descrição, e — em
+ * campo de escolha — as opções numeradas (o número também vale como
+ * resposta). Fonte ÚNICA para a tela (prévia) e o motor.
+ */
+/**
+ * As opções do campo valem pelo NÚMERO da posição na lista? Não quando alguma
+ * opção já É um número ("1", "2", "3") — aí "2" seria ambíguo, e a lista sai
+ * com marcadores em vez de números.
+ */
+function askFormOptionsByPosition(field) {
+    const numero = /^\s*\d+\s*$/;
+    return !(field.options ?? []).some((o) => numero.test(o.label) || numero.test(o.value));
+}
+function defaultAskFormQuestionText(field) {
+    const partes = [`*${field.label.trim()}*`];
+    const descricao = field.description?.trim();
+    if (descricao)
+        partes.push(descricao);
+    const multipla = field.type === forms_1.FormFieldType.CHECKBOX || field.type === forms_1.FormFieldType.MULTI_SELECT;
+    if (field.type === forms_1.FormFieldType.SELECT || field.type === forms_1.FormFieldType.RADIO || multipla) {
+        const numerar = askFormOptionsByPosition(field);
+        const opcoes = (field.options ?? []).map((o, i) => (numerar ? `${i + 1}. ${o.label}` : `• ${o.label}`));
+        if (opcoes.length > 0)
+            partes.push(opcoes.join('\n'));
+        if (multipla)
+            partes.push('(pode escolher mais de uma, separadas por vírgula)');
+    }
+    else if (!descricao && (field.type === forms_1.FormFieldType.NUMBER || field.type === forms_1.FormFieldType.RATING || field.type === forms_1.FormFieldType.LINEAR_SCALE)) {
+        const { min, max } = askFormNumberRange(field);
+        if (max < Number.MAX_SAFE_INTEGER)
+            partes.push(`(responda com um número de ${min} a ${max})`);
+    }
+    return partes.join('\n\n');
+}
+/**
+ * Perguntas que um "Salvar formulário" DEPOIS do "Perguntar formulário"
+ * preenche com OUTRO valor (número sequencial, texto fixo, outra Pergunta) —
+ * o nó não as faz: a resposta do cliente seria jogada fora (2026-09-28,
+ * número da sorte perguntado ao cliente no teste). Fonte ÚNICA para o motor e
+ * a tela. Devolve id do campo → nome do "Salvar formulário" que o preenche.
+ *
+ * Vale só com `saveAs`: sem ele o "Salvar formulário" nem tem como usar as
+ * respostas do questionário, e tudo pareceria "preenchido por outro valor".
+ * `saves` = os "Salvar formulário" que vêm DEPOIS deste nó no desenho.
+ */
+function askFormFieldsFilledElsewhere(ask, saves) {
+    const saveAs = ask.saveAs?.trim();
+    if (!saveAs || !ask.formId)
+        return {};
+    const proprio = `variables.${saveAs}.`;
+    const preenchidas = {};
+    for (const save of saves) {
+        if (save.config.formId !== ask.formId)
+            continue;
+        for (const [fieldId, valor] of Object.entries(save.config.answers ?? {})) {
+            if (typeof valor !== 'string' || valor.trim() === '' || valor.includes(proprio))
+                continue;
+            if (!(fieldId in preenchidas))
+                preenchidas[fieldId] = save.label;
+        }
+    }
+    return preenchidas;
+}
+/** Saídas do nó "Perguntar formulário" — "Respondeu" e "Não respondeu". */
+function askFormOutputHandles() {
+    return [exports.ASK_QUESTION_ANSWERED_HANDLE, exports.ASK_QUESTION_NO_REPLY_HANDLE];
+}
+/**
+ * Nós que perguntam ao cliente e DORMEM esperando a resposta ("Pergunta" e
+ * "Perguntar formulário"). Valem para os dois as mesmas regras de desenho:
+ * ramificam por saída, não entram em caminhos paralelos nem em repetição, e
+ * não convivem com a regra de cancelamento "Mensagem recebida".
+ */
+exports.WORKFLOW_QUESTION_NODE_TYPES = ['action_ask_question', 'action_ask_form'];
+function isWorkflowQuestionNodeType(type) {
+    return exports.WORKFLOW_QUESTION_NODE_TYPES.includes(type);
+}
+/**
+ * Saídas de um nó de pergunta — fonte ÚNICA para tela, validador e
+ * compilador. `null` quando o tipo não é de pergunta.
+ */
+function questionNodeOutputHandles(type, config) {
+    if (type === 'action_ask_question')
+        return askQuestionOutputHandles(config);
+    if (type === 'action_ask_form')
+        return askFormOutputHandles();
+    return null;
+}
 /**
  * Quem originou um evento observado pelo node "Aguardar".
  *
@@ -307,6 +555,12 @@ exports.WORKFLOW_VALIDATION_CODES = [
     'FANOUT_HTTP_AGUARDA',
     /** Desenho sem nenhum gatilho (nem `skill_input`). */
     'SEM_GATILHO',
+    /**
+     * Gatilho que o motor não suporta repetido no mesmo workflow (23/09/2026):
+     * dois Agendamentos, ou duas Inatividades da mesma entidade — o relógio é um
+     * só por workflow e o segundo nunca dispararia.
+     */
+    'GATILHO_REPETIDO',
     /** Nó sem nenhuma ligação — nem entrando, nem saindo. */
     'NO_SOLTO',
     /** Campo obrigatório faltando ou fora do formato na configuração de um nó. */
@@ -334,4 +588,21 @@ exports.WORKFLOW_VALIDATION_CODES = [
      * aba Cancelamento (spec 2026-09-20 §7.1, D12) — a saída só existe com regra.
      */
     'WAIT_FOR_CANCELADO_SEM_REGRA',
+    /**
+     * Ligação presa num ponto de saída que não é "Sucesso" nem "Falha", num nó
+     * que tem essas duas saídas (`nodeTypeHasSuccessFailureOutputs`, 2026-09-23).
+     */
+    'SUCESSO_FALHA_HANDLE_INVALIDO',
+    /**
+     * Ligação presa numa saída que o nó "Pergunta" não tem (2026-09-28) — em
+     * geral a opção foi apagada ou o tipo de resposta mudou
+     * (`askQuestionOutputHandles`).
+     */
+    'PERGUNTA_SAIDA_INVALIDA',
+    /**
+     * Regra "Mensagem recebida" da aba Cancelamento que continua valendo
+     * enquanto um nó "Pergunta" espera a resposta (2026-09-28): a própria
+     * resposta do cliente cancelaria o fluxo.
+     */
+    'PERGUNTA_CANCELADA_PELA_RESPOSTA',
 ];

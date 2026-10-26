@@ -12,6 +12,20 @@ import type { LeadChannel, LeadMedium, LeadSource } from './leads';
 /** Granularidade da série, derivada do período (nunca escolhida pelo usuário). */
 export type VisitsGranularity = 'day' | 'month';
 
+/**
+ * Recorte de procedência dos LEADS contados na tela.
+ *
+ * `capture_page` = lead que veio da página pública de captura por QR Code — o
+ * lead que tem sessão de captura gravada (`capture.sessionUuid`). É o único
+ * sinal que sobrevive a uma venda do ERP reaproveitar o mesmo lead.
+ */
+export const VISITS_LEAD_ORIGIN_FILTERS = ['capture_page'] as const;
+export type VisitsLeadOriginFilter = (typeof VISITS_LEAD_ORIGIN_FILTERS)[number];
+
+/** Status do lead (`businessStatus`) — lead sem o campo conta como `pending`. */
+export const VISITS_LEAD_STATUS_FILTERS = ['pending', 'won', 'lost'] as const;
+export type VisitsLeadStatusFilter = (typeof VISITS_LEAD_STATUS_FILTERS)[number];
+
 export interface VisitsAnalyticsQuery {
   period: DashboardPeriodMode;
   year?: number;
@@ -19,9 +33,21 @@ export interface VisitsAnalyticsQuery {
   startDate?: string;
   endDate?: string;
   unitId?: string;
+  /**
+   * UF do endereço da unidade (`SC`, `PR`…) — recorta a tela para TODAS as
+   * unidades daquele estado. `unitId` é mais específico e vence quando os dois
+   * chegam juntos.
+   */
+  unitState?: string;
   channel?: LeadChannel;
   origin?: string;
   source?: LeadSource;
+  /**
+   * Só valem para o que conta LEADS (barra, card e mapa de calor na métrica
+   * `leads`). Visitas e vendas não mudam: são outra coisa.
+   */
+  leadOrigin?: VisitsLeadOriginFilter;
+  leadStatus?: VisitsLeadStatusFilter;
 }
 
 export interface VisitsEntriesQuery extends VisitsAnalyticsQuery {
@@ -56,6 +82,22 @@ export interface VisitsSeriesPoint {
   sales: number;
   /** Receita dos negócios ganhos no bucket. */
   revenue: number;
+  /**
+   * Leads criados no bucket, pela data de CRIAÇÃO — mesma definição do mapa de
+   * calor na métrica `leads`. Independente de `measured`, como `sales`.
+   */
+  leads: number;
+}
+
+/**
+ * Leads do período com a conversão de visitas em leads.
+ *
+ * `conversionPct` é `null` quando o período não tem nenhuma visita medida:
+ * dividir por zero não é "0%", é "não dá para saber".
+ */
+export interface VisitsLeadsKpi extends KpiValue {
+  /** `leads ÷ visitas × 100` no período inteiro. */
+  conversionPct: number | null;
 }
 
 export interface VisitsHourPoint {
@@ -132,6 +174,7 @@ export interface VisitsAnalyticsResponse {
     dailyAvg: KpiValue;
     peakDay: { date: string; views: number } | null;
     peakHour: { hour: number; views: number } | null;
+    leads: VisitsLeadsKpi;
   };
   series: VisitsSeriesPoint[];
   byHour: VisitsHourPoint[];

@@ -6,8 +6,8 @@
  * (`conversationsService`, `leadsService`, `ticketsService`) e pelo
  * frontend (componente `DistributionConfigSection`).
  *
- * Este arquivo expõe apenas tipos — a implementação do motor vive em
- * `TROIA-V3-BACKEND/src/modules/distribution/`.
+ * Este arquivo expõe tipos e um leitor de config (`isLeadOwnerPreferred`) —
+ * a implementação do motor vive em `TROIA-V3-BACKEND/src/modules/distribution/`.
  *
  * Durante a migração (Fase 0 → Fase 10), este arquivo coexiste com o
  * legado `assignment.ts`. O legado será removido na Fase 10.
@@ -87,6 +87,28 @@ export interface DistributionConfig {
   // `availability` considera somente status online via Redis presence.
   // `last_interaction` busca último atendente do contato (sem config adicional).
   // Para filtrar por horário de trabalho, use `shift`. Ver decisão D27 no plano.
+
+  /**
+   * Só em CANAIS (2026-10-01): antes da estratégia acima, a conversa vai para
+   * o responsável pelo lead aberto do contato, quando ele pode receber (usuário
+   * ativo e vinculado ao canal). Vale na chegada de uma conversa nova e nas
+   * transferências do agente de IA. Quando ele não pode receber, segue a
+   * distribuição normal e o motivo fica no registro de atribuição do chat.
+   *
+   * **Ausente = ligada** (decisão do dono: nasce ligada em todos os canais).
+   * Leia sempre por {@link isLeadOwnerPreferred}, nunca o campo cru.
+   */
+  preferLeadOwner?: boolean;
+}
+
+/**
+ * A regra "priorizar o responsável pelo lead" vale neste canal? Faz parte da
+ * distribuição automática: com ela desligada no canal, a regra não age.
+ */
+export function isLeadOwnerPreferred(
+  config: Pick<DistributionConfig, 'enabled' | 'preferLeadOwner'> | null | undefined,
+): boolean {
+  return config?.enabled === true && config.preferLeadOwner !== false;
 }
 
 export interface DistributionFixedOperatorConfig {
@@ -165,4 +187,38 @@ export type DistributionResultReason =
   /** `last_interaction` não achou histórico ou o user saiu da pool. */
   | 'no_previous_interaction'
   /** Estratégia ainda não implementada (availability/last_interaction Phase 5). */
-  | 'not_implemented';
+  | 'not_implemented'
+  /** Havia candidatos, mas todos estavam na lista de excluídos (transferência por inatividade). */
+  | 'pool_empty_after_exclusion';
+
+/**
+ * Opções de `DistributionService.pickReassignmentCandidate` — a escolha de
+ * quem recebe uma conversa na transferência por inatividade (spec
+ * 2026-09-29). Nunca gira o contador de rodízio do contexto (I1): a
+ * distribuição normal continua exatamente igual.
+ */
+export interface ReassignmentCandidateOptions {
+  /** Quem NÃO pode receber: o responsável atual + quem já deixou esta espera sem resposta (D6). */
+  excludeUserIds: readonly string[];
+  /** Responsável atual — o escolhido é o próximo depois dele, em ordem fixa de id. */
+  currentUserId: string;
+  /** Com equipe: candidatos = membros da equipe ∩ atendentes do contexto (D13). */
+  teamId?: string;
+  /** Prefere quem está online; se ninguém estiver, usa todos (D17). */
+  preferOnline: boolean;
+}
+
+/**
+ * Resultado de `DistributionService.pickReassignmentCandidate`.
+ */
+export interface ReassignmentCandidateResult {
+  /** Usuário escolhido ou `null` quando não sobrou ninguém. */
+  userId: string | null;
+  /** Estratégia efetiva (`fixed_team` com equipe; `sequential` na queda do `last_interaction`). */
+  strategyUsed: DistributionStrategy;
+  /** Tamanho da pool depois da exclusão e dos filtros. */
+  poolSize: number;
+  reason: DistributionResultReason;
+  /** Equipe que originou a pool, quando houver. */
+  teamId?: string;
+}

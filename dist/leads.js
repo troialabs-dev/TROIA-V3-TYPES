@@ -1,7 +1,8 @@
 "use strict";
 // Lead Types - Sales system with universal source
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isLeadChannel = exports.isLeadMedium = exports.isLeadSource = exports.getLeadChannelLabel = exports.getLeadMediumLabel = exports.getLeadSourceLabel = exports.LEAD_CHANNEL_LABELS = exports.LEAD_MEDIUM_LABELS = exports.LEAD_SOURCE_LABELS = exports.LEAD_CHANNELS = exports.LEAD_MEDIUMS = exports.LEAD_SOURCES = void 0;
+exports.LEAD_COUPON_PAD_LENGTH = exports.isLeadChannel = exports.isLeadMedium = exports.isLeadSource = exports.getLeadChannelLabel = exports.getLeadMediumLabel = exports.getLeadSourceLabel = exports.LEAD_CHANNEL_LABELS = exports.LEAD_MEDIUM_LABELS = exports.LEAD_SOURCE_LABELS = exports.LEAD_CHANNELS = exports.LEAD_MEDIUMS = exports.LEAD_SOURCES = void 0;
+exports.formatLeadCoupon = formatLeadCoupon;
 // ============================================================================
 // CANONICAL ENUMS — single source of truth para Lead.source / Lead.medium / Lead.channel
 // ============================================================================
@@ -103,3 +104,12 @@ const isLeadMedium = (v) => exports.LEAD_MEDIUMS.includes(v);
 exports.isLeadMedium = isLeadMedium;
 const isLeadChannel = (v) => exports.LEAD_CHANNELS.includes(v);
 exports.isLeadChannel = isLeadChannel;
+// ============================================================================
+// CUPONS DO LEAD (sorteio — 2026-09-29)
+// ============================================================================
+/** Dígitos com zero à esquerda na exibição do cupom (0012). */
+exports.LEAD_COUPON_PAD_LENGTH = 4;
+/** Cupom como o cliente vê: `12` → `"0012"`. */
+function formatLeadCoupon(coupon) {
+    return String(coupon).padStart(exports.LEAD_COUPON_PAD_LENGTH, '0');
+}

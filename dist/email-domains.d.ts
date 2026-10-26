@@ -1,8 +1,15 @@
 import { ObjectId } from 'mongodb';
 import { PaginationQuery, ListResponse } from './common';
+/**
+ * `TRACKING` / `TRACKING_CAA`: registros do subdomínio de rastreio (ex.:
+ * `links.exemplo.com`). Sem ele verificado o provedor não registra abertura
+ * nem clique. Não entram na conta do `status` do domínio — domínio com envio
+ * verificado continua `verified` enquanto o rastreio espera o DNS.
+ */
+export type DnsRecordKind = 'SPF' | 'DKIM' | 'DMARC' | 'MX' | 'TRACKING' | 'TRACKING_CAA';
 export interface DnsRecord {
-    record: 'SPF' | 'DKIM' | 'DMARC' | 'MX';
-    type: 'MX' | 'TXT' | 'CNAME';
+    record: DnsRecordKind;
+    type: 'MX' | 'TXT' | 'CNAME' | 'CAA';
     name: string;
     value: string;
     priority?: number;

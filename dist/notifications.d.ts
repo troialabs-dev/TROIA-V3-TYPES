@@ -47,6 +47,7 @@ export declare enum NotificationType {
     SUBSCRIPTION_RENEWED = "subscription_renewed",
     SUBSCRIPTION_EXPIRED = "subscription_expired",
     SUBSCRIPTION_CANCELED = "subscription_canceled",
+    CREDIT_USAGE_ALERT = "credit_usage_alert",
     TEAM_MEMBER_ADDED = "team_member_added",
     TEAM_MEMBER_REMOVED = "team_member_removed",
     SHIFT_REMINDER = "shift_reminder",
@@ -120,9 +121,10 @@ export declare const NOTIFICATION_TYPE_SUPPORTED_CHANNELS: Partial<Record<Notifi
  */
 export declare function getSupportedChannelsForType(type: NotificationType | string): NotificationChannel[];
 /**
- * Canais que nascem **sem nenhum tipo marcado** na lista de fábrica
+ * Canais que nascem **quase sem nenhum tipo marcado** na lista de fábrica
  * (`getDefaultNotificationTypesForChannel`): e-mail e WhatsApp custam dinheiro
  * e invadem canal pessoal, então o usuário precisa marcar o que quer receber.
+ * A única coisa que nasce marcada neles é `OPT_IN_FACTORY_NOTIFICATION_TYPES`.
  *
  * ⚠️ Mudança de papel em 2026-08-17 (REGRA ÚNICA de despacho): esta lista NÃO
  * decide mais nada no dispatch. Desde a regra única, `types` ausente ou vazio
@@ -137,6 +139,20 @@ export declare const OPT_IN_NOTIFICATION_CHANNELS: readonly NotificationChannel[
  * Ver `OPT_IN_NOTIFICATION_CHANNELS`.
  */
 export declare function isOptInNotificationChannel(channel: NotificationChannel): boolean;
+/**
+ * Avisos que nascem marcados TAMBÉM em e-mail e WhatsApp (2026-10-05).
+ *
+ * Lista deliberadamente mínima. O aviso de créditos acabando entrou aqui por
+ * decisão do dono: em 29/09–05/10/2026 uma empresa ficou com saldo negativo
+ * três vezes e 86 respostas de atendentes falharam por falta de créditos sem
+ * ninguém ter sido avisado. Um aviso desses que só chega no sino não alcança
+ * quem não está com o sistema aberto. O usuário continua podendo desmarcar.
+ *
+ * Acrescentar um tipo aqui é decidir que TODO usuário novo passa a receber
+ * e-mail e WhatsApp dele sem ter pedido — mesma régua de
+ * `DEFAULT_NOTIFICATION_TYPES`: decisão consciente, nunca de carona.
+ */
+export declare const OPT_IN_FACTORY_NOTIFICATION_TYPES: readonly NotificationType[];
 /**
  * Tipos deliberadamente FORA da lista de fábrica.
  *
@@ -170,7 +186,7 @@ export declare const FACTORY_EXCLUDED_NOTIFICATION_TYPES: readonly NotificationT
 export declare const DEFAULT_NOTIFICATION_TYPES: readonly NotificationType[];
 /**
  * Lista de fábrica do canal: sino/push/som recebem `DEFAULT_NOTIFICATION_TYPES`,
- * e-mail/WhatsApp nascem vazios (nada marcado).
+ * e-mail/WhatsApp nascem só com `OPT_IN_FACTORY_NOTIFICATION_TYPES`.
  *
  * Retorna cópia mutável — o chamador grava no documento do usuário.
  */

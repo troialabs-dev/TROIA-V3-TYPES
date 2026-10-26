@@ -14,6 +14,8 @@ export interface ChannelMediaAsset {
   mediaUrl: string;
   type: 'image' | 'video';
   thumbnailUrl?: string;
+  /** Imagem hospedada por nós (cópia da foto ou da capa do vídeo). */
+  storedImageUrl?: string;
   order: number;
 }
 
@@ -349,4 +351,19 @@ export interface ChannelMediaPublishResult {
   permalink?: string;
   success: boolean;
   error?: string;
+}
+
+/** Post público de um canal (feed do Instagram exibido em sites). */
+export interface PublicChannelPost {
+  id: string;
+  imageUrl: string;
+  mediaType: ChannelMediaType;
+  permalink?: string;
+  caption?: string;
+}
+
+/** Resposta pública do feed do Instagram de um canal. */
+export interface PublicInstagramFeedResponse {
+  posts: PublicChannelPost[];
+  profileUrl?: string;
 }

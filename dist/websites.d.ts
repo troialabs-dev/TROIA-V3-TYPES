@@ -1,5 +1,5 @@
 import { TenantAwareDocument, PaginationQuery, ListResponse } from './common';
-export type WebsiteFieldType = 'text' | 'textarea' | 'richtext' | 'number' | 'boolean' | 'select' | 'multiselect' | 'color' | 'image' | 'images' | 'url' | 'reference' | 'funnelStep' | 'list' | 'object';
+export type WebsiteFieldType = 'text' | 'textarea' | 'richtext' | 'number' | 'boolean' | 'select' | 'multiselect' | 'color' | 'image' | 'images' | 'video' | 'url' | 'reference' | 'funnelStep' | 'list' | 'object';
 export interface ComponentFieldDefinition {
     name: string;
     label: string;
@@ -21,7 +21,7 @@ export interface ComponentFieldDefinition {
         value: string | number;
     }>;
     referenceConfig?: {
-        entity: 'database' | 'funnelStep' | 'team' | 'user' | 'channel';
+        entity: 'database' | 'funnelStep' | 'team' | 'user' | 'channel' | 'property';
         multiple?: boolean;
         displayField?: string;
         /**
@@ -231,4 +231,11 @@ export interface UpdateWebsiteRequest {
 export interface WebsiteQuery extends PaginationQuery {
     status?: string;
     modelId?: string;
+}
+/** Opção de imóvel exposta ao seletor de referência (`entity: 'property'`) do editor de sites. */
+export interface WebsitePropertyOption {
+    id: string;
+    label: string;
+    code?: string;
+    city?: string;
 }

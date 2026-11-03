@@ -909,7 +909,7 @@ export interface AskQuestionActionConfig {
      */
     maxRetries?: number;
     /**
-     * Prazo para responder, contado do envio da pergunta. Teto de 72 h
+     * Prazo para responder, contado do envio da pergunta. Teto de 30 dias
      * (`WAIT_UNTIL_MAX_DURATION_MS`), o mesmo do Aguardar.
      * @default ASK_QUESTION_DEFAULT_TIMEOUT
      */
@@ -1231,9 +1231,9 @@ export type WaitDurationUnit = 'seconds' | 'minutes' | 'hours' | 'days';
  * Até quando o node "Aguardar" espera. União discriminada por `mode` —
  * exatamente um dos quatro formatos.
  *
- * - `duration`: espera um tempo corrido. Teto de 72h (rejeitado no save,
+ * - `duration`: espera um tempo corrido. Teto de 30 dias (rejeitado no save,
  *   saturado em runtime).
- * - `random_duration`: espera um tempo sorteado entre `min` e `max`. Mesmo teto de 72h,
+ * - `random_duration`: espera um tempo sorteado entre `min` e `max`. Mesmo teto de 30 dias,
  *   aplicado ao `max`. Sorteia uma vez, na primeira execução.
  * - `time`: espera até o próximo HH:mm, no fuso resolvido. `weekdays` (0=Dom..6=Sáb)
  *   restringe os dias aceitos; ausente = qualquer dia.
@@ -1494,7 +1494,13 @@ export interface WaitForControlConfig {
  * fallback e divergir.
  */
 export declare function readWaitCancelEvents(cancelEvent: WaitForControlConfig['cancelEvent']): WaitCancelEvent[];
-/** Teto de espera do modo `duration` (72h). Aplicado no save e em runtime. */
+/**
+ * Teto de espera do modo `duration`/`random_duration` do Aguardar e do prazo de
+ * resposta da Pergunta / Perguntar formulário (30 dias — era 72h até 03/11/2026).
+ * Aplicado no save e em runtime. É proteção contra erro de digitação, não limite
+ * técnico: a espera vive na foto do run + despertador da fila, sem prazo próprio.
+ */
+export declare const WAIT_UNTIL_MAX_DURATION_DAYS = 30;
 export declare const WAIT_UNTIL_MAX_DURATION_MS: number;
 /**
  * Split Control Configuration (control_split — teste A/B)

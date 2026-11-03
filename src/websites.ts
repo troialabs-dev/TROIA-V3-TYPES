@@ -16,6 +16,7 @@ export type WebsiteFieldType =
   | 'color'
   | 'image'
   | 'images'
+  | 'video'
   | 'url'
   | 'reference'
   | 'funnelStep'
@@ -43,7 +44,7 @@ export interface ComponentFieldDefinition {
   options?: Array<{ label: string; value: string | number }>;
 
   referenceConfig?: {
-    entity: 'database' | 'funnelStep' | 'team' | 'user' | 'channel';
+    entity: 'database' | 'funnelStep' | 'team' | 'user' | 'channel' | 'property';
     multiple?: boolean;
     displayField?: string;
     /**
@@ -318,4 +319,12 @@ export interface UpdateWebsiteRequest {
 export interface WebsiteQuery extends PaginationQuery {
   status?: string;
   modelId?: string;
+}
+
+/** Opção de imóvel exposta ao seletor de referência (`entity: 'property'`) do editor de sites. */
+export interface WebsitePropertyOption {
+  id: string;
+  label: string;
+  code?: string;
+  city?: string;
 }

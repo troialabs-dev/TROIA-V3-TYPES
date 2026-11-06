@@ -105,6 +105,11 @@ export type DistributionContextRef = {
 } | {
     kind: 'routing-rule';
     ruleId: string;
+}
+/** Rodízio entre os usuários de uma campanha com "vincular respostas" (contador no documento da campanha). */
+ | {
+    kind: 'campaign';
+    campaignId: string;
 };
 /**
  * Entradas de runtime para `DistributionService.selectUser`.

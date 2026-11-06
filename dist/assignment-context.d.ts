@@ -1,4 +1,5 @@
 import type { DistributionStrategy } from './distribution';
+import type { CampaignReplyStep } from './campaigns';
 /**
  * AssignmentContext — Contexto canônico de qualquer atribuição/transferência
  * de lead, conversation ou ticket.
@@ -40,7 +41,9 @@ export type AssignmentStrategy = 'manual' | 'sequential' | 'fixed_operator' | 'f
 /** Transferência automática porque o responsável não respondeu ao cliente a tempo (spec 2026-09-29). */
  | 'inactivity_transfer'
 /** Conversa nova entregue ao responsável pelo lead aberto do contato, antes da distribuição do canal (2026-10-01). */
- | 'lead_owner';
+ | 'lead_owner'
+/** Conversa nova de cliente que respondeu a uma campanha com "vincular respostas" ligado (2026-11-05). */
+ | 'campaign_reply';
 /** Por que o responsável pelo lead NÃO recebeu a conversa (2026-10-01). */
 export type LeadOwnerSkipReason = 
 /** Não está vinculado ao canal da conversa. */
@@ -97,4 +100,15 @@ export interface AssignmentContext {
     skippedLeadOwnerId?: string;
     /** Por que ele ficou de fora. Só faz sentido junto de `skippedLeadOwnerId`. */
     skippedLeadOwnerReason?: LeadOwnerSkipReason;
+    campaignId?: string;
+    /** Nome GRAVADO no registro — campanha excluída continua com nome no chat. */
+    campaignName?: string;
+    /** De qual passo da ordem veio o responsável. */
+    campaignReplyStep?: CampaignReplyStep;
+    /** Candidatos da ordem que não puderam receber, com o motivo. */
+    skippedCampaignOwners?: {
+        userId: string;
+        reason: LeadOwnerSkipReason;
+        step: CampaignReplyStep;
+    }[];
 }

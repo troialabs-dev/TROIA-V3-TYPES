@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CampaignMessageStatus = exports.SCHEDULING_TYPE_LABELS = exports.SchedulingType = exports.AUDIENCE_TYPE_LABELS = exports.AudienceType = exports.CampaignStatus = exports.CAMPAIGN_AUTO_PAUSE_REASONS = void 0;
+exports.CampaignMessageStatus = exports.SCHEDULING_TYPE_LABELS = exports.SchedulingType = exports.AUDIENCE_TYPE_LABELS = exports.AudienceType = exports.CampaignStatus = exports.CAMPAIGN_AUTO_PAUSE_REASONS = exports.CAMPAIGN_REPLY_WINDOW_DAYS = void 0;
+/** Prazo, em dias a partir do envio, em que a resposta do cliente fica vinculada à campanha. */
+exports.CAMPAIGN_REPLY_WINDOW_DAYS = 7;
 /**
  * Pausa automática (2026-08-27): uma campanha em andamento vira `paused`
  * sozinha quando o canal que ela usa não está utilizável — desconectado, ou

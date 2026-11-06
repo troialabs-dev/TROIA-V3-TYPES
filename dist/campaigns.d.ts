@@ -19,6 +19,54 @@ export interface Campaign extends TenantAwareDocument {
     stats: CampaignStats;
     /** Preenchido quando a campanha se pausa sozinha; limpo ao retomar. */
     autoPause?: CampaignAutoPauseInfo;
+    /**
+     * Vincular respostas (2026-11-05). Ausente ou `enabled: false` = comportamento
+     * de antes: nenhum envio grava `replyLink` e a resposta segue a distribuição
+     * normal do canal. Só pode mudar com a campanha em `draft`/`scheduled`.
+     */
+    replyLink?: CampaignReplyLinkConfig;
+}
+/** Prazo, em dias a partir do envio, em que a resposta do cliente fica vinculada à campanha. */
+export declare const CAMPAIGN_REPLY_WINDOW_DAYS = 7;
+/**
+ * Interruptor "vincular respostas" da campanha. `userIds` são os usuários do
+ * rodízio ("dividir entre"): recebem quem não tem dono de lead nem responsável
+ * na lista do público.
+ */
+export interface CampaignReplyLinkConfig {
+    enabled: boolean;
+    userIds: string[];
+}
+/**
+ * De qual passo da ordem veio o responsável da resposta:
+ * dono do lead → responsável na lista do público → rodízio no envio → rodízio na resposta.
+ */
+export type CampaignReplyStep = 'lead_owner' | 'audience_owner' | 'send_rotation' | 'reply_rotation';
+/**
+ * Vínculo de UM envio com a resposta do cliente. Gravado só quando a campanha
+ * tem o interruptor ligado. Guarda TODOS os candidatos (não só o primeiro),
+ * para o "próximo da ordem" funcionar na hora da resposta.
+ */
+export interface CampaignMessageReplyLink {
+    /** Canal da campanha — a resposta só conta se vier por ele. */
+    channelId: string;
+    contactId?: string;
+    /** Chave de comparação: `phoneDedupeKey` do telefone ou e-mail em minúsculas. */
+    recipientKey: string;
+    leadOwnerId?: string;
+    leadId?: string;
+    audienceOwnerId?: string;
+    rotationUserId?: string;
+    /** Responsável esperado no envio; trocado pelo responsável real quando o cliente responde. */
+    ownerId?: string;
+    ownerStep?: CampaignReplyStep;
+    /** Texto como foi enviado; é o que entra na conversa quando o cliente responde. */
+    renderedText?: string;
+    /** Fim do prazo (envio + 7 dias), ISO. */
+    expiresAt?: string;
+    /** Quando o cliente respondeu (ISO). Presente = vínculo já usado. */
+    repliedAt?: string;
+    conversationId?: string;
 }
 /**
  * Pausa automática (2026-08-27): uma campanha em andamento vira `paused`
@@ -168,6 +216,8 @@ export interface CampaignStats {
     messagesDelivered: number;
     messagesFailed: number;
     messagesRead: number;
+    /** Envios cuja resposta foi vinculada (interruptor "vincular respostas"). Ausente em campanhas antigas. */
+    messagesReplied?: number;
     startedAt?: string;
     completedAt?: string;
     /** Quando a PRIMEIRA mensagem da campanha está agendada para sair. ISO string. */
@@ -204,6 +254,7 @@ export interface CreateCampaignRequest {
     schedulingType: SchedulingType;
     scheduledFor?: string | null;
     recurringConfig?: RecurringConfig;
+    replyLink?: CampaignReplyLinkConfig;
 }
 /**
  * Update Campaign Request
@@ -221,6 +272,8 @@ export interface UpdateCampaignRequest {
     schedulingType?: SchedulingType;
     scheduledFor?: string | null;
     recurringConfig?: RecurringConfig;
+    /** Só aceito com a campanha em `draft`/`scheduled` (422 depois de iniciada). */
+    replyLink?: CampaignReplyLinkConfig;
     status?: CampaignStatus;
 }
 /**
@@ -245,6 +298,8 @@ export interface CampaignStatsResponse {
     deliveryRate: number;
     readRate: number;
     failureRate: number;
+    messagesReplied: number;
+    replyRate: number;
     startedAt?: string;
     completedAt?: string;
     duration?: number;
@@ -286,6 +341,8 @@ export interface CampaignMessage extends TenantAwareDocument {
     failedAt?: string;
     failureReason?: string;
     retryCount: number;
+    /** Vínculo com a resposta do cliente — só em campanha com "vincular respostas" ligado. */
+    replyLink?: CampaignMessageReplyLink;
 }
 /**
  * Campaign Message Response - Response type sem _id
@@ -306,6 +363,8 @@ export interface CampaignMessageQuery extends PaginationQuery {
     status?: CampaignMessageStatus | CampaignMessageStatus[];
     recipientIdentifier?: string;
     search?: string;
+    /** Filtra pelo responsável do envio (`replyLink.ownerId`). */
+    ownerId?: string;
 }
 /**
  * Campaign Message Job Data - Dados do job na queue BullMQ

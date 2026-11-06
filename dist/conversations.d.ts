@@ -121,6 +121,15 @@ export interface ConversationSlaThresholdsResponse {
  * 2026-08-30. Os dois são opcionais: registro anterior a essa data não tem a
  * informação, e ausente é a verdade. Ver `CreatorStamp` em `common.ts`.
  */
+/** Vínculo da conversa com a campanha respondida. Ver `Conversation.campaignReply`. */
+export interface ConversationCampaignReply {
+    campaignId: string;
+    campaignMessageId: string;
+    ownerId: string;
+    /** De qual passo da ordem veio o responsável — o registro usa quando ele não pode mais receber. */
+    ownerStep?: CampaignReplyStep;
+    expiresAt: string;
+}
 export interface Conversation extends CreatorStamp {
     id: string;
     appId: string;
@@ -228,6 +237,13 @@ export interface Conversation extends CreatorStamp {
      * essa resposta, processada depois dela, arme o relógio por engano.
      */
     lastHumanReplyAt?: string;
+    /**
+     * Conversa atribuída porque o cliente respondeu a uma campanha com "vincular
+     * respostas" (2026-11-05). Campo INTERNO (fora do UpdateConversationSchema).
+     * As transferências da IA só usam `ownerId` se ele ainda for o responsável
+     * da conversa e o prazo (`expiresAt`, ISO na API / Date no banco) não venceu.
+     */
+    campaignReply?: ConversationCampaignReply;
     provider?: {
         id: string;
         name: string;
@@ -593,6 +609,7 @@ export interface ConversationKanbanColumnQuery extends ConversationKanbanQuery {
     laneId: ConversationKanbanLaneId;
     cursor?: string;
 }
+import type { CampaignReplyStep } from './campaigns';
 import { CreatorStamp, ListResponse, PaginationQuery } from './common';
 import type { KanbanSortMode, ConversationKanbanLaneId } from './kanban';
 import type { SlaClockKey, SlaClockState, SlaState } from './sla';

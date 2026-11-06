@@ -210,6 +210,18 @@ export interface Template {
     usageCount: number;
     lastUsedAt?: Date;
     /**
+     * Motivo da recusa do provedor ao RECEBER o template para aprovação (antes
+     * de qualquer revisão) — o template fica em rascunho. Texto pronto para a
+     * tela. Ausente quando o envio para aprovação deu certo ou não se aplica.
+     *
+     * Existe desde 05/11/2026: a Meta recusou dois templates da Mastercell
+     * (conta banida, "proibida de criar templates") e a tela mostrava sucesso —
+     * o motivo ia só para o registro de erros do servidor.
+     */
+    submissionError?: string;
+    /** Quando a recusa de `submissionError` aconteceu. */
+    submissionErrorAt?: Date;
+    /**
      * Quem criou o template. OPCIONAL desde 2026-08-30 — era declarado
      * obrigatório e NENHUM caminho gravava (o mapper devolvia `''`).
      */

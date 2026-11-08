@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.holidaySuppressionKey = holidaySuppressionKey;
+exports.isDeviceVerificationRequired = isDeviceVerificationRequired;
 /**
  * Chave estável de supressão de feriado nacional.
  *
@@ -20,4 +21,11 @@ function holidaySuppressionKey(name) {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
+}
+/**
+ * A empresa exige confirmação de aparelho novo? Ausente = sim.
+ * Ponto ÚNICO de leitura da regra — backend e frontend usam este helper.
+ */
+function isDeviceVerificationRequired(security) {
+    return security?.requireDeviceVerification !== false;
 }

@@ -120,6 +120,41 @@ export interface Company extends FullTenantDocument {
   businessCalendar?: BusinessCalendarConfig;
   /** Estreia do motor de SLA nesta empresa (decisão 10). `undefined` = motor nunca ligado. */
   sla?: CompanySlaActivation;
+  /** Configurações de segurança do login dos usuários da empresa. */
+  security?: CompanySecuritySettings;
+}
+
+/**
+ * Segurança do login dos usuários da empresa.
+ *
+ * Campos AUSENTES valem como o comportamento anterior à existência da opção —
+ * empresa que nunca mexeu continua exatamente como estava (dia 0 sem migração).
+ * Use sempre os helpers abaixo para ler; nunca compare o campo cru.
+ */
+export interface CompanySecuritySettings {
+  /**
+   * Pedir código de confirmação (2FA por e-mail/WhatsApp) quando um usuário
+   * entra por um aparelho que ainda não foi confirmado.
+   * Ausente = pedir (padrão). `false` = não pedir.
+   */
+  requireDeviceVerification?: boolean;
+}
+
+export interface UpdateCompanySecurityRequest {
+  requireDeviceVerification: boolean;
+}
+
+/** Resposta enxuta de `GET /companies/me/security` (lida por todo usuário logado). */
+export interface CompanySecurityResponse {
+  requireDeviceVerification: boolean;
+}
+
+/**
+ * A empresa exige confirmação de aparelho novo? Ausente = sim.
+ * Ponto ÚNICO de leitura da regra — backend e frontend usam este helper.
+ */
+export function isDeviceVerificationRequired(security?: CompanySecuritySettings | null): boolean {
+  return security?.requireDeviceVerification !== false;
 }
 
 /**
@@ -246,6 +281,8 @@ export interface CompanyResponse {
   invoices: CreditInvoice[];
   /** Estreia do motor de SLA nesta empresa (decisão 10). `undefined` = motor nunca ligado. */
   sla?: CompanySlaActivation;
+  /** Segurança do login. Ler com `isDeviceVerificationRequired` — ausente = 2FA exigido. */
+  security?: CompanySecuritySettings;
   createdAt: string;
   updatedAt: string;
 }

@@ -389,6 +389,8 @@ export interface LeadKanbanCard {
     funnelId: string;
     description?: string;
     budget?: number;
+    /** Valor do negócio fechado — o card de lead ganho mostra este no lugar do `budget`. */
+    wonValue?: number;
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     businessStatus?: 'pending' | 'won' | 'lost';
     qualifyStatus?: 'pending' | 'qualified' | 'disqualified';

@@ -2,12 +2,23 @@
  * Contratos genéricos do Kanban em escala (SP1 — 2026-07-16).
  * Usados por leads hoje; desenhados para tickets (SP3) e atendimentos (SP4).
  */
+/**
+ * Valor da coluna separado por status do negócio (só leads — 2026-11-09).
+ * `open` = Σ `budget` dos pendentes; `won` = Σ do valor exibido no card dos
+ * ganhos (`wonValue` quando > 0, senão `budget`). Perdidos não entram em nenhum.
+ */
+export interface KanbanValueBreakdown {
+    open: number;
+    won: number;
+}
 export interface KanbanColumnPage<T> {
     columnId: string;
     /** Total REAL da coluna no backend, respeitando todos os filtros ativos. */
     count: number;
     /** Soma do campo de valor (leads: budget) da coluna INTEIRA. */
     totalValue: number;
+    /** Valor da coluna INTEIRA por status do negócio — só no board de leads. */
+    valueBreakdown?: KanbanValueBreakdown;
     items: T[];
     /** Cursor opaco da próxima página; null = fim. */
     nextCursor: string | null;

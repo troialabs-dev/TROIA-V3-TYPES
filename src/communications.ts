@@ -40,6 +40,14 @@ export interface MessageData {
   message?: string;
   messageId?: string;  // ✅ MongoDB message ID for correlation
   replyToMessageId?: string;  // ✅ ID of message being replied to (for quoted messages)
+  /**
+   * true when the quoted message was sent by us (outbound). WhatsApp matches a
+   * quote by id + author: quoting our own message with the contact as author
+   * makes the recipient's phone drop the quote silently (incident 2026-11-09).
+   */
+  replyToFromMe?: boolean;
+  /** Text of the quoted message, so the provider can embed the quote preview. */
+  replyToText?: string;
   type?: 'text' | 'media' | 'image' | 'video' | 'audio' | 'document' | 'location' | 'contact' | 'contacts' | 'poll' | 'reaction' | 'edit' | 'delete';
 
   // ✅ Structured media object

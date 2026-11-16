@@ -1533,6 +1533,15 @@ export interface AIAgentNodeConfig {
     includeHistory?: boolean;
     /** Janela de horário comercial — fora dela o run suspende até o próximo horário válido (o agente roda no horário, não de madrugada). */
     businessHours?: WorkflowBusinessHoursConfig;
+    /**
+     * Só entrega a conversa ao agente, sem fazê-lo falar agora (2026-11-16).
+     * Grava `agentId` + `agentStatus: 'active'` na conversa; o agente responde
+     * a próxima mensagem do cliente e todas as seguintes. Caso de uso: o
+     * workflow manda um modelo do WhatsApp oficial e a IA atende a resposta.
+     * Com isso ligado, `customPrompt`, `waitForResponse` e `includeHistory`
+     * não se aplicam.
+     */
+    assignOnly?: boolean;
 }
 /**
  * AI Agent Inline Node Configuration

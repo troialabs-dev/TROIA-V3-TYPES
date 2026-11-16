@@ -136,6 +136,7 @@ __exportStar(require("./transfer"), exports);
 __exportStar(require("./assignment-context"), exports);
 // Channel rate limits (GET/PATCH/DELETE /channels/:id/rate-limits)
 __exportStar(require("./channel-rate-limits"), exports);
+__exportStar(require("./meta-send-block"), exports);
 // Goals module (Phase 3 — commercial dashboard targets for users/teams/company)
 __exportStar(require("./goals"), exports);
 // Channel Dashboard module (F0 — 5 collections: media, comments, metrics, activities, sync-state)

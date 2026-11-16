@@ -99,8 +99,22 @@ export interface WhatsAppOfficialTemplateConfig {
   // Template ID returned by Meta after approval
   providerTemplateId?: string;  // Null até ser aprovado
 
-  // WhatsApp template structure
+  /**
+   * Categoria do template. Depois que o template é enviado para aprovação,
+   * quem manda nela é a META: ela pode reclassificar (ex.: Utilidade →
+   * Marketing) e avisa pelo webhook `template_category_update`. Desde
+   * 16/11/2026 o sistema grava aqui a categoria que a Meta diz — antes o aviso
+   * era descartado e a tela mostrava a categoria escolhida na criação.
+   */
   category: TemplateCategory;
+  /** Categoria anterior, quando a Meta reclassificou o template. */
+  previousCategory?: TemplateCategory;
+  /** Quando a Meta reclassificou (ausente quando o dado veio de consulta, sem data). */
+  categoryChangedAt?: Date | string;
+  /** Categoria que a Meta AVISOU que vai aplicar (aviso prévio de ~24 h). */
+  upcomingCategory?: TemplateCategory;
+  /** Quando a Meta disse que vai aplicar `upcomingCategory`. */
+  upcomingCategoryAt?: Date | string;
   language: string;             // 'pt_BR', 'en_US', etc.
 
   // Components (Meta format)
@@ -243,6 +257,25 @@ export interface TemplateStatusUpdate {
   reason?: string;                           // Rejection reason (se rejeitado)
   approvedAt?: string;
   rejectedAt?: string;
+}
+
+/**
+ * Mudança de categoria de template avisada pela Meta (webhook
+ * `template_category_update`). Dois formatos:
+ *  - `completed`: a categoria JÁ mudou — `newCategory` é a nova,
+ *    `previousCategory` a de antes.
+ *  - `upcoming`: aviso prévio — `newCategory` é a ATUAL, `upcomingCategory` a
+ *    que a Meta vai aplicar em `upcomingAt` (~24 h).
+ */
+export interface TemplateCategoryUpdate {
+  providerTemplateId: string;
+  /** `message_template_name` — nos templates do sistema é o `_id` do template. */
+  templateId?: string;
+  kind: 'completed' | 'upcoming';
+  newCategory: TemplateCategory;
+  previousCategory?: TemplateCategory;
+  upcomingCategory?: TemplateCategory;
+  upcomingAt?: string;
 }
 
 /**

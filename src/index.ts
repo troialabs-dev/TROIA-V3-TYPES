@@ -154,6 +154,7 @@ export * from './assignment-context';
 
 // Channel rate limits (GET/PATCH/DELETE /channels/:id/rate-limits)
 export * from './channel-rate-limits';
+export * from './meta-send-block';
 
 // Goals module (Phase 3 — commercial dashboard targets for users/teams/company)
 export * from './goals';

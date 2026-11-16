@@ -79,6 +79,7 @@ export * from './storage-usage';
 export * from './transfer';
 export * from './assignment-context';
 export * from './channel-rate-limits';
+export * from './meta-send-block';
 export * from './goals';
 export * from './channel-dashboard';
 export * from './dashboards-commercial';

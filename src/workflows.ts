@@ -782,6 +782,20 @@ export interface UpdateContactActionConfig {
   addTags?: string[];
   removeTags?: string[];
   customFields?: Record<string, unknown>;
+  /**
+   * Document (CPF/CNPJ) written to `personalInfo.document`. Accepts
+   * `{{variables}}`; an empty value after resolving is ignored.
+   */
+  document?: string;
+  /** City written to `personalInfo.address.city`. Empty is ignored. */
+  city?: string;
+  /** State (UF) written to `personalInfo.address.state`. Empty is ignored. */
+  state?: string;
+  /**
+   * Text APPENDED to the contact notes — never replaces what is there. Skipped
+   * when the notes already contain the same text.
+   */
+  notes?: string;
 }
 
 /**

@@ -98,14 +98,12 @@ __exportStar(require("./quick-messages"), exports);
 __exportStar(require("./databases"), exports);
 // AI Agents modules (Phase 1)
 __exportStar(require("./ai-agents"), exports);
-__exportStar(require("./agent-analytics"), exports);
 __exportStar(require("./agent-prompt-tags"), exports);
 __exportStar(require("./escalation-rules"), exports);
 __exportStar(require("./custom-actions"), exports);
 __exportStar(require("./custom-action-logs"), exports);
 // Agent Webhook Logs — execution log for AI Agent webhook receiver (GET /api/agent-webhook-logs)
 __exportStar(require("./agent-webhook-logs"), exports);
-__exportStar(require("./agent-golden-cases"), exports);
 // Lead Routing Rules (automatic lead assignment by conditions)
 __exportStar(require("./leads-routing-rules"), exports);
 // Workflows/Automation module
@@ -148,7 +146,6 @@ __exportStar(require("./dashboards-commercial"), exports);
 __exportStar(require("./dashboards-marketing"), exports);
 // Agent Evaluators catalog (labels, descriptions, tier, aliases) — single
 // source of truth pro sistema interno de qualidade dos agentes IA
-__exportStar(require("./agent-evaluators"), exports);
 // Widget configuration (chat widget + hosted page)
 __exportStar(require("./widget"), exports);
 // Conversation semantic search (MCP tool request/response)

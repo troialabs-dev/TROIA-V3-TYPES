@@ -90,53 +90,6 @@ export type KeywordMatchLogic =
   | 'OR'   // Match if ANY keyword matches (default)
   | 'AND'; // Match if ALL keywords match
 
-// ─── Tool Preconditions ─────────────────────────────────────────────────
-
-export interface QuestionsAnsweredRule {
-  type: 'questions_answered';
-  /** Perguntas que o cliente deve ter respondido na conversa */
-  questions: string[];
-}
-
-export interface ContextCheckRule {
-  type: 'context_check';
-  /** Pergunta sim/não que o LLM juiz responde analisando o histórico */
-  question: string;
-}
-
-export interface TagPresentRule {
-  type: 'tag_present';
-  tag: string;
-}
-
-export interface FieldValueRule {
-  type: 'field_value';
-  field: string;
-  operator: '=' | '!=' | '>' | '<' | 'contains';
-  value: string;
-}
-
-export interface TimeWindowRule {
-  type: 'time_window';
-  startHour: number;
-  endHour: number;
-  /** Dias permitidos: 0=dom, 1=seg, ..., 6=sab. Undefined = todos. */
-  allowedDays?: number[];
-}
-
-export type PreconditionRule =
-  | QuestionsAnsweredRule
-  | ContextCheckRule
-  | TagPresentRule
-  | FieldValueRule
-  | TimeWindowRule;
-
-export interface ToolPrecondition {
-  /** ID da tool: 'create_lead', 'consultar_erp', 'skill_abc123' */
-  toolId: string;
-  conditions: PreconditionRule[];
-}
-
 /**
  * Configuração de escalação/transferência do agente (ponto 6 do blueprint
  * de qualidade, 2026-07-15). O LLM decide QUANDO escalar; esta config
@@ -234,8 +187,6 @@ export interface AIAgent {
   customActionIds: string[];
   /** IDs dos workflows (usageType='skill') que este agente pode invocar */
   skillWorkflowIds?: string[];
-  /** Pré-condições configuráveis por ferramenta */
-  toolPreconditions?: ToolPrecondition[];
   databases?: string[];                     // Database IDs that the agent can access
   voiceEnabled: boolean;
   voiceConfig?: {
@@ -422,8 +373,6 @@ export interface UpdateAIAgentWebhookStatusRequest {
 export interface AIAgentResponse extends Omit<AIAgent, '_id'> {
   id: string;
   totalInteractions?: number;
-  /** Qualidade do agente em % inteiro — média dos `agent-scores` (30d), só na listagem */
-  qualityScore?: number;
 }
 
 export interface CreateAIAgentRequest {
@@ -442,8 +391,6 @@ export interface CreateAIAgentRequest {
   customActionIds?: string[];
   /** IDs dos workflows (usageType='skill') que este agente pode invocar */
   skillWorkflowIds?: string[];
-  /** Pré-condições configuráveis por ferramenta */
-  toolPreconditions?: ToolPrecondition[];
   databases?: string[];                     // Database IDs that the agent can access
   voiceEnabled?: boolean;
   voiceConfig?: {
@@ -471,8 +418,6 @@ export interface UpdateAIAgentRequest {
   customActionIds?: string[];
   /** IDs dos workflows (usageType='skill') que este agente pode invocar */
   skillWorkflowIds?: string[];
-  /** Pré-condições configuráveis por ferramenta */
-  toolPreconditions?: ToolPrecondition[];
   databases?: string[];                     // Database IDs that the agent can access
   voiceEnabled?: boolean;
   voiceConfig?: {
@@ -484,17 +429,6 @@ export interface UpdateAIAgentRequest {
   /** Ajuste por agente do cadastro oficial do negócio (herda da empresa campo a campo) */
   officialInfoOverride?: AIAgentOfficialInfoOverride;
   webhooks?: Omit<AIAgentWebhook, 'createdAt' | 'updatedAt'>[];
-  /**
-   * ID do `agent-quality-snapshots` doc que originou este update (Sprint UI-4).
-   * Quando presente, o backend grava o ID na nova versão criada, permitindo
-   * que a tab "Versões" exiba o score do treino que originou a versão como
-   * "herdado" em vez de "sem treino".
-   *
-   * Populado automaticamente pelo fluxo de `AgentTrainModal` quando o
-   * cliente aplica sugestões do Prompt Coach. Não é persistido no doc do
-   * agente — apenas consumido pelo service ao criar a versão.
-   */
-  baseSnapshotId?: string;
 }
 
 export interface AIAgentQuery extends PaginationQuery {
@@ -520,17 +454,6 @@ export interface AgentVersion {
   appId: ObjectId | string;
   companyId: ObjectId | string;
   createdAt: Date | string;
-  /**
-   * ID do snapshot de quality test (`agent-quality-snapshots`) que
-   * originou esta versão (Sprint UI-4). Presente apenas quando a
-   * versão foi criada aplicando sugestões do Prompt Coach. `undefined`
-   * para versões criadas manualmente ou pela criação inicial.
-   *
-   * A tab "Versões" usa esse campo para exibir o score do treino que
-   * originou a versão como "herdado" — ex: "Score 82% (herdado do
-   * treino da versão anterior)".
-   */
-  baseSnapshotId?: ObjectId | string;
 }
 
 /**
@@ -544,125 +467,3 @@ export interface AgentVersionResponse extends Omit<AgentVersion, '_id'> {
  * Query parameters for agent versions
  */
 export interface AgentVersionQuery extends PaginationQuery {}
-
-// ============================================================================
-// Agent Test Scenarios (Sprint UI-2+: cenários de teste por categoria/segmento)
-// ============================================================================
-
-/**
- * Cenário de teste usado pelo fluxo "Treinar Agente".
- *
- * Cada cenário simula uma conversa real de cliente e pode ser filtrado
- * por categoria do agente (O QUE ele faz) e/ou segmento (PRA QUAL
- * indústria). Arrays vazios significam "qualquer" — um cenário com
- * `categories: []` e `segments: []` é universal (ex: "saudação").
- *
- * Cenários vivem na collection `agent-test-scenarios` e podem ser:
- * - **System**: predefinidos pela Troia (`isSystem: true`, sem appId/companyId)
- * - **Custom**: criados pelo tenant (`isSystem: false`, com appId + companyId)
- */
-export interface AgentTestScenario {
-  _id?: ObjectId;
-  /** Se true = cenário do sistema Troia (visível a todos os tenants) */
-  isSystem: boolean;
-  /** Presente apenas se isSystem=false */
-  appId?: ObjectId | string;
-  /** Presente apenas se isSystem=false */
-  companyId?: ObjectId | string;
-  /**
-   * Chave estável pra identificar o cenário entre runs. Snake-case.
-   * Ex: "saudacao-simples", "preco-imovel-alto-padrao".
-   */
-  scenarioKey: string;
-  /** Label humano exibido na UI */
-  label: string;
-  /**
-   * Turnos sequenciais do CLIENTE — SEMPRE multi-turn (length ≥ 1).
-   * Cenários de 1 turno representam o caso degenerado (uma única mensagem),
-   * mas passam pelo mesmo runner. Cenários de 2+ turnos exercitam os 4 eixos
-   * MultiChallenge (ICLR 2025): retenção de instrução, memória de dados do
-   * usuário, edição com mudança de ideia, auto-coerência entre turnos.
-   *
-   * O runner do `AgentQualityTestService` persiste cada turno como
-   * `conversation-messages` na mesma conversa sandbox e chama
-   * `executeAgent` N vezes. Apenas o ÚLTIMO turno é avaliado pelos
-   * evaluators — os anteriores constroem o contexto natural.
-   */
-  customerTurns: string[];
-  /**
-   * Categorias de agente que podem usar este cenário. Array vazio = qualquer
-   * categoria (cenário universal ou só filtrado por segmento).
-   */
-  categories: AgentCategory[];
-  /**
-   * Segmentos de mercado que podem usar este cenário. Array vazio = qualquer
-   * segmento (universal ou só filtrado por categoria).
-   */
-  segments: AgentSegment[];
-  /** Score mínimo esperado de relevance pra considerar aprovado */
-  expectedMinRelevance: number;
-  /** Tools que idealmente deveriam ter sido chamadas */
-  expectedTools?: string[];
-  /** Tools que NÃO deveriam ter sido chamadas */
-  forbiddenTools?: string[];
-  /** Rubric — o que torna esta conversa boa/ruim (texto explicativo) */
-  rubric: string;
-  /** Ativo = true (default). Se false, ignorado na seleção de cenários */
-  active: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-  deletedAt?: Date | string;
-}
-
-export interface AgentTestScenarioResponse
-  extends Omit<AgentTestScenario, '_id' | 'appId' | 'companyId' | 'createdAt' | 'updatedAt' | 'deletedAt'> {
-  id: string;
-  appId?: string;
-  companyId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateAgentTestScenarioRequest {
-  scenarioKey: string;
-  label: string;
-  /** Turnos do cliente (1+). Todos os cenários são multi-turn por padrão. */
-  customerTurns: string[];
-  categories: AgentCategory[];
-  segments: AgentSegment[];
-  expectedMinRelevance?: number;
-  expectedTools?: string[];
-  forbiddenTools?: string[];
-  rubric: string;
-  active?: boolean;
-}
-
-export interface UpdateAgentTestScenarioRequest {
-  scenarioKey?: string;
-  label?: string;
-  customerTurns?: string[];
-  categories?: AgentCategory[];
-  segments?: AgentSegment[];
-  expectedMinRelevance?: number;
-  expectedTools?: string[];
-  forbiddenTools?: string[];
-  rubric?: string;
-  active?: boolean;
-}
-
-/**
- * Query pra listar cenários. Filtros usam o mesmo padrão de matching
- * M-para-M: passar `agentCategory` retorna cenários cuja lista de
- * categorias inclui esse valor OU está vazia (universais).
- */
-export interface AgentTestScenarioQuery extends PaginationQuery {
-  /** Filtra cenários por categoria (retorna cenários aplicáveis) */
-  agentCategory?: AgentCategory;
-  /** Filtra cenários por segmento (retorna cenários aplicáveis) */
-  agentSegment?: AgentSegment;
-  /** Se true = só cenários do sistema. false = só custom. omitido = ambos */
-  isSystem?: boolean;
-  /** Só cenários ativos (default true). Passar false inclui inativos */
-  activeOnly?: boolean;
-  search?: string;
-}

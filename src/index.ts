@@ -102,14 +102,12 @@ export * from './databases';
 
 // AI Agents modules (Phase 1)
 export * from './ai-agents';
-export * from './agent-analytics';
 export * from './agent-prompt-tags';
 export * from './escalation-rules';
 export * from './custom-actions';
 export * from './custom-action-logs';
 // Agent Webhook Logs — execution log for AI Agent webhook receiver (GET /api/agent-webhook-logs)
 export * from './agent-webhook-logs';
-export * from './agent-golden-cases';
 
 // Lead Routing Rules (automatic lead assignment by conditions)
 export * from './leads-routing-rules';
@@ -171,7 +169,6 @@ export * from './dashboards-marketing';
 
 // Agent Evaluators catalog (labels, descriptions, tier, aliases) — single
 // source of truth pro sistema interno de qualidade dos agentes IA
-export * from './agent-evaluators';
 
 // Widget configuration (chat widget + hosted page)
 export * from './widget';

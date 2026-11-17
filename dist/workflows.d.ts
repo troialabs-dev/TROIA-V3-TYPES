@@ -169,6 +169,21 @@ export interface WebhookTriggerConfig {
      * triplicados (reenvio de venda pelo coletor de ERP).
      */
     singleExecutionPerIdentifier?: boolean;
+    /**
+     * Onde está o identifier dentro do corpo do POST (2026-11-16). Caminho com
+     * pontos, índice numérico para lista: `evento.0.cnpj`. Ausente ou vazio =
+     * `identifier` (comportamento original). Serve para sistema de terceiro que
+     * não deixa escolher o nome do campo (ex.: Casa dos Dados manda o CNPJ em
+     * `evento[0].cnpj`). Só vale com `singleExecutionPerIdentifier` ligado.
+     */
+    identifierPath?: string;
+    /**
+     * Código HTTP da resposta de sucesso (2026-11-16). Ausente = 202 (original).
+     * 200 para sistema de terceiro que trata qualquer outro código como falha e
+     * reenvia (ex.: Casa dos Dados reenvia 2 vezes e desliga o webhook depois de
+     * 10 falhas seguidas).
+     */
+    successStatus?: 200 | 202;
 }
 /** Tamanho máximo do `identifier` aceito pelo gatilho de webhook. */
 export declare const WORKFLOW_EXECUTION_IDENTIFIER_MAX_LENGTH = 200;

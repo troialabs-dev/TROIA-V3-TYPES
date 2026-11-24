@@ -491,6 +491,47 @@ export interface MessageSearchResponse {
   highlights: Record<string, string[]>; // messageId -> highlighted snippets
 }
 
+// ============================================================================
+// "Fio" da conversa (plano 2026-11-24, Parte 3): a conversa aberta + os
+// atendimentos anteriores do mesmo contato no mesmo canal que o usuário
+// enxerga. Rotas: GET /conversations/:id/thread/search e /thread/messages.
+// ============================================================================
+
+/** Um resultado da lupa: leve, sem a mensagem inteira. */
+export interface ConversationThreadSearchHit {
+  messageId: string;
+  conversationId: string;
+  /** `true` quando a mensagem é do atendimento aberto (não do histórico). */
+  isCurrentConversation: boolean;
+  sentAt: string;
+  direction: 'inbound' | 'outbound';
+  senderName?: string;
+  /** Trecho em volta do termo (~120 caracteres), com "…" quando corta. */
+  snippet: string;
+}
+
+export interface ConversationThreadSearchResponse {
+  items: ConversationThreadSearchHit[];
+  /** Contado até `totalCap`; acima disso `totalCapped: true`. */
+  total: number;
+  totalCapped: boolean;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+/** `around` = a mensagem + vizinhas dos dois lados; `older`/`newer` = estritamente antes/depois dela. */
+export type ConversationThreadDirection = 'around' | 'older' | 'newer';
+
+/** Janela de mensagens do fio (modo "em volta da mensagem"). Itens newest first. */
+export interface ConversationThreadMessagesResponse {
+  items: ConversationMessageResponse[];
+  /** Há mensagem mais antiga que a última da lista. */
+  hasOlder: boolean;
+  /** Há mensagem mais nova que a primeira da lista. */
+  hasNewer: boolean;
+}
+
 // Bulk operations
 export interface BulkMessageOperationRequest {
   messageIds: string[];

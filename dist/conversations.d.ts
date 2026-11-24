@@ -461,6 +461,23 @@ export interface ConversationHistoryGroupResponse extends ConversationResponse {
 }
 export interface ConversationHistoryGroupListResponse extends ListResponse<ConversationHistoryGroupResponse> {
 }
+/**
+ * Um canal em que o contato tem conversa — aba Atendimento do drawer do lead
+ * (plano 2026-11-24, Parte 2). Servido por GET /conversations/contact/:contactId/channels,
+ * só com as conversas que o usuário enxerga. Canal excluído fica fora.
+ */
+export interface ContactConversationChannel {
+    channelId: string;
+    channelName: string;
+    /** providerId da integração do canal (ícone) — ex.: `gateway-whatsapp`. */
+    providerId?: string;
+    /** Conversa aberta (aguardando ou em atendimento) mais recente nesse canal. */
+    openConversationId?: string;
+    /** Conversa mais recente nesse canal (aberta ou encerrada). */
+    lastConversationId: string;
+    lastMessageAt?: string;
+    conversationCount: number;
+}
 export type ConversationMediaType = 'image' | 'video' | 'audio' | 'document';
 export interface ConversationMediaItem {
     messageId: string;

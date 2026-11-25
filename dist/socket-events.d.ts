@@ -7,7 +7,7 @@ import type { SoundKey } from './notifications';
 import type { ChannelDisconnectInfo } from './channels';
 import type { ChannelSyncStatus, ChannelActivityType } from './channel-dashboard';
 import type { LeadCaptureSession } from './lead-capture';
-import type { InternalAgentRunStartedEvent, InternalAgentRunDeltaEvent, InternalAgentRunStepEvent, InternalAgentRunFinishedEvent, InternalAgentSessionUpdatedEvent, InternalAgentSessionDeletedEvent, InternalAgentConfirmationUpdatedEvent } from './internal-agents';
+import type { InternalAgentRunStartedEvent, InternalAgentRunDeltaEvent, InternalAgentRunStepEvent, InternalAgentRunFinishedEvent, InternalAgentSessionUpdatedEvent, InternalAgentSessionDeletedEvent, InternalAgentConfirmationUpdatedEvent, InternalAgentSpeechChunkEvent, InternalAgentSpeechEndEvent, InternalAgentTaskUpdatedEvent, InternalAgentTaskDeletedEvent } from './internal-agents';
 export declare const SOCKET_EVENTS: {
     readonly CONVERSATION_MESSAGE: "conversation:message";
     readonly CONVERSATION_UPDATED: "conversation:updated";
@@ -83,6 +83,10 @@ export declare const SOCKET_EVENTS: {
     readonly INTERNAL_AGENT_SESSION_UPDATED: "internal-agent:session-updated";
     readonly INTERNAL_AGENT_SESSION_DELETED: "internal-agent:session-deleted";
     readonly INTERNAL_AGENT_CONFIRMATION_UPDATED: "internal-agent:confirmation-updated";
+    readonly INTERNAL_AGENT_SPEECH_CHUNK: "internal-agent:speech-chunk";
+    readonly INTERNAL_AGENT_SPEECH_END: "internal-agent:speech-end";
+    readonly INTERNAL_AGENT_TASK_UPDATED: "internal-agent:task-updated";
+    readonly INTERNAL_AGENT_TASK_DELETED: "internal-agent:task-deleted";
 };
 export type SocketEventName = typeof SOCKET_EVENTS[keyof typeof SOCKET_EVENTS];
 /**
@@ -778,6 +782,10 @@ export interface SocketEventMap {
     [SOCKET_EVENTS.INTERNAL_AGENT_SESSION_UPDATED]: InternalAgentSessionUpdatedEvent;
     [SOCKET_EVENTS.INTERNAL_AGENT_SESSION_DELETED]: InternalAgentSessionDeletedEvent;
     [SOCKET_EVENTS.INTERNAL_AGENT_CONFIRMATION_UPDATED]: InternalAgentConfirmationUpdatedEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_SPEECH_CHUNK]: InternalAgentSpeechChunkEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_SPEECH_END]: InternalAgentSpeechEndEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_TASK_UPDATED]: InternalAgentTaskUpdatedEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_TASK_DELETED]: InternalAgentTaskDeletedEvent;
 }
 export declare const SOCKET_ROOMS: {
     /**

@@ -16,6 +16,10 @@ import type {
   InternalAgentSessionUpdatedEvent,
   InternalAgentSessionDeletedEvent,
   InternalAgentConfirmationUpdatedEvent,
+  InternalAgentSpeechChunkEvent,
+  InternalAgentSpeechEndEvent,
+  InternalAgentTaskUpdatedEvent,
+  InternalAgentTaskDeletedEvent,
 } from './internal-agents';
 
 // ============================================================================
@@ -140,6 +144,12 @@ export const SOCKET_EVENTS = {
   INTERNAL_AGENT_SESSION_DELETED: 'internal-agent:session-deleted',
   // E2: cartão de confirmação criado, decidido, expirado ou que falhou
   INTERNAL_AGENT_CONFIRMATION_UPDATED: 'internal-agent:confirmation-updated',
+  // E4: áudio da resposta, frase a frase, e o fim da fala
+  INTERNAL_AGENT_SPEECH_CHUNK: 'internal-agent:speech-chunk',
+  INTERNAL_AGENT_SPEECH_END: 'internal-agent:speech-end',
+  // E6: tarefa agendada criada/alterada/rodou e tarefa apagada
+  INTERNAL_AGENT_TASK_UPDATED: 'internal-agent:task-updated',
+  INTERNAL_AGENT_TASK_DELETED: 'internal-agent:task-deleted',
 } as const;
 
 // Type for event names
@@ -942,6 +952,10 @@ export interface SocketEventMap {
   [SOCKET_EVENTS.INTERNAL_AGENT_SESSION_UPDATED]: InternalAgentSessionUpdatedEvent;
   [SOCKET_EVENTS.INTERNAL_AGENT_SESSION_DELETED]: InternalAgentSessionDeletedEvent;
   [SOCKET_EVENTS.INTERNAL_AGENT_CONFIRMATION_UPDATED]: InternalAgentConfirmationUpdatedEvent;
+  [SOCKET_EVENTS.INTERNAL_AGENT_SPEECH_CHUNK]: InternalAgentSpeechChunkEvent;
+  [SOCKET_EVENTS.INTERNAL_AGENT_SPEECH_END]: InternalAgentSpeechEndEvent;
+  [SOCKET_EVENTS.INTERNAL_AGENT_TASK_UPDATED]: InternalAgentTaskUpdatedEvent;
+  [SOCKET_EVENTS.INTERNAL_AGENT_TASK_DELETED]: InternalAgentTaskDeletedEvent;
 }
 
 // ============================================================================

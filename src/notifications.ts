@@ -93,6 +93,10 @@ export enum NotificationType {
   AGENDA_DAILY_SUMMARY = 'agenda_daily_summary', // Resumo diário da agenda às 08:00
 
   // Automação (2026-08-22)
+  // E6 dos agentes internos (25/11/2026): resultado e pausa de tarefa agendada. FORA de
+  // DEFAULT_NOTIFICATION_TYPES — os canais vêm da própria tarefa (decisão do dono Q1), não das preferências.
+  INTERNAL_AGENT_TASK_RESULT = 'internal_agent_task_result',
+  INTERNAL_AGENT_TASK_PAUSED = 'internal_agent_task_paused',
   WORKFLOW_AUTO_PAUSED = 'workflow_auto_paused', // Workflow pausado sozinho (10 falhas seguidas ou canal excluído)
 
   // Campanhas e integrações (2026-08-27)
@@ -238,6 +242,10 @@ export const OPT_IN_FACTORY_NOTIFICATION_TYPES: readonly NotificationType[] = [
 export const FACTORY_EXCLUDED_NOTIFICATION_TYPES: readonly NotificationType[] = [
   NotificationType.SLA_WARNING,
   NotificationType.SLA_BREACH,
+  // Tarefas agendadas dos agentes internos (E6, 25/11/2026): os canais vêm da própria tarefa, escolhidos por
+  // quem a criou (decisão do dono Q1) — o envio ignora as preferências. Ficam fora das listas de fábrica.
+  NotificationType.INTERNAL_AGENT_TASK_RESULT,
+  NotificationType.INTERNAL_AGENT_TASK_PAUSED,
 ];
 
 /**

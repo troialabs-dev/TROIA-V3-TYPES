@@ -8,6 +8,9 @@ import type { AgentActAs } from './ai-agents';
 /** Limites do chat interno — usados pelo Zod do backend e pela tela. */
 export declare const AGENT_SESSION_LIMITS: {
     readonly textMaxChars: 20000;
+    /** E4: gravação de voz — teto de duração (NUNCA #46) e de arquivo (limite do transcritor). */
+    readonly voiceMaxSeconds: 300;
+    readonly voiceMaxBytes: number;
     readonly attachmentsPerMessage: 5;
     readonly titleMaxChars: 120;
     readonly searchMaxChars: 100;
@@ -43,7 +46,185 @@ export interface AgentSessionDocumentBlock {
  * Conteúdo de uma mensagem. A E5 acrescenta tipos (gráfico, arquivo gerado) —
  * consumidores IGNORAM tipos que não conhecem.
  */
-export type AgentSessionContentBlock = AgentSessionTextBlock | AgentSessionImageBlock | AgentSessionDocumentBlock | AgentSessionConfirmationBlock;
+export type AgentSessionContentBlock = AgentSessionTextBlock | AgentSessionImageBlock | AgentSessionDocumentBlock | AgentSessionConfirmationBlock | AgentSessionFileBlock | AgentSessionChartBlock | AgentSessionTaskBlock;
+/** Tetos das tarefas agendadas (decisões do dono Q3: 20 ativas por pessoa, no mínimo a cada 15 min). */
+export declare const AGENT_TASK_LIMITS: {
+    readonly maxActivePerUser: 20;
+    readonly minIntervalMinutes: 15;
+    readonly titleMaxChars: 120;
+    readonly instructionMaxChars: 4000;
+    readonly maxConsecutiveFailures: 3;
+    /** Prazo do cartão de confirmação numa execução agendada (ninguém está olhando). */
+    readonly confirmationHours: 24;
+};
+export type AgentTaskStatus = 'active' | 'paused';
+export type AgentTaskPauseReason = 'manual' | 'failures' | 'owner_inactive' | 'agent_unavailable' | 'completed';
+export type AgentTaskRunStatus = 'completed' | 'failed' | 'waiting_confirmation' | 'skipped';
+export type AgentTaskRecurrence = {
+    kind: 'interval';
+    everyMinutes: number;
+}
+/** `time` 'HH:mm'. weekdays: 0 = domingo … 6 = sábado; ausente/vazio = todos os dias. */
+ | {
+    kind: 'daily';
+    time: string;
+    weekdays?: number[];
+}
+/** `dayOfMonth` 1–28. */
+ | {
+    kind: 'monthly';
+    time: string;
+    dayOfMonth: number;
+}
+/** ISO. Roda uma vez e fica pausada com o motivo 'completed'. */
+ | {
+    kind: 'once';
+    at: string;
+};
+/** Avisos além do sino — o sino vai sempre (decisão do dono Q1). Escolha da própria tarefa, não das preferências. */
+export interface AgentTaskNotify {
+    push?: boolean;
+    email?: boolean;
+    whatsapp?: boolean;
+}
+export interface AgentScheduledTaskResponse {
+    id: string;
+    agentId: string;
+    agentName: string;
+    ownerUserId: string;
+    ownerName: string;
+    title: string;
+    instruction: string;
+    recurrence: AgentTaskRecurrence;
+    /** pt-BR, montado no servidor (ex.: "Toda segunda às 08:00"). */
+    recurrenceLabel: string;
+    timezone: string;
+    notify: AgentTaskNotify;
+    status: AgentTaskStatus;
+    pauseReason?: AgentTaskPauseReason;
+    /** Conversa da tarefa (existe depois da 1ª execução). */
+    sessionId?: string;
+    /** ISO */
+    nextRunAt?: string;
+    /** ISO */
+    lastRunAt?: string;
+    lastRunStatus?: AgentTaskRunStatus;
+    consecutiveFailures: number;
+    isOwner: boolean;
+    canUpdate: boolean;
+    canDelete: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+export interface CreateAgentScheduledTaskRequest {
+    agentId: string;
+    title: string;
+    instruction: string;
+    recurrence: AgentTaskRecurrence;
+    notify?: AgentTaskNotify;
+}
+export interface UpdateAgentScheduledTaskRequest {
+    title?: string;
+    instruction?: string;
+    recurrence?: AgentTaskRecurrence;
+    notify?: AgentTaskNotify;
+    /** 'active' retoma (zera as falhas); 'paused' pausa com o motivo 'manual'. */
+    status?: AgentTaskStatus;
+}
+export interface AgentScheduledTasksListResponse {
+    tasks: AgentScheduledTaskResponse[];
+}
+export interface RunAgentScheduledTaskNowResponse {
+    started: boolean;
+    sessionId: string;
+}
+/** Cartão da tarefa na resposta do agente (ferramentas schedule_task / update_task). */
+export interface AgentSessionTaskBlock {
+    type: 'task';
+    taskId: string;
+    title: string;
+    recurrenceLabel: string;
+    status: AgentTaskStatus;
+    action: 'created' | 'updated' | 'paused' | 'resumed' | 'deleted';
+}
+export interface InternalAgentTaskUpdatedEvent {
+    task: AgentScheduledTaskResponse;
+}
+export interface InternalAgentTaskDeletedEvent {
+    taskId: string;
+}
+/** Tetos da E5. `maxRows`: exportação direto do sistema (decisão do dono: 30 mil). */
+export declare const AGENT_EXPORT_LIMITS: {
+    readonly maxRows: 30000;
+    /** Linhas que o próprio agente escreve num documento (`generate_document`). */
+    readonly documentMaxRows: 2000;
+    readonly chartMaxSeries: 8;
+    readonly chartMaxPoints: 200;
+    /** Linhas da prévia guardada no bloco do arquivo (modo exibição). */
+    readonly previewRows: 50;
+};
+export type AgentFileFormat = 'csv' | 'xlsx' | 'pdf';
+/** Arquivo gerado na conversa (exportação ou documento). Baixa por GET /sessions/:id/files/:fileId. */
+export interface AgentSessionFileBlock {
+    type: 'file';
+    fileId: string;
+    filename: string;
+    mimeType: string;
+    format: AgentFileFormat;
+    size: number;
+    /** Linhas (csv/xlsx). */
+    rows?: number;
+    /** A exportação parou no teto (`AGENT_EXPORT_LIMITS.maxRows`). */
+    truncated?: boolean;
+    /** Total que casava com a busca, quando `truncated`. */
+    totalRows?: number;
+    /** Prévia para o modo exibição (até `previewRows` linhas; csv/xlsx). */
+    preview?: {
+        columns: string[];
+        rows: string[][];
+    };
+}
+export type AgentChartType = 'bar' | 'line' | 'area' | 'pie';
+/** Gráfico desenhado pela tela (recharts) a partir dos dados que o agente mandou. */
+export interface AgentSessionChartBlock {
+    type: 'chart';
+    chartId: string;
+    title: string;
+    chartType: AgentChartType;
+    labels: string[];
+    series: Array<{
+        name: string;
+        values: number[];
+    }>;
+    unit?: 'number' | 'currency' | 'percent';
+    xLabel?: string;
+    yLabel?: string;
+}
+export type AgentPageEntityType = 'lead' | 'conversation' | 'ticket' | 'contact' | 'customer' | 'funnel' | 'funnel_step' | 'ticket_pipeline' | 'channel' | 'team' | 'user' | 'campaign' | 'workflow' | 'database' | 'agent';
+/**
+ * "Vendo agora" do painel lateral (decisão do dono Q1): a tela e o que está aberto. É DICA para o agente
+ * escolher a função certa — não dá acesso a nada; as funções conferem a permissão como sempre.
+ */
+export interface AgentPageContext {
+    /** ex.: '/crm/funnels/6a…' */
+    route: string;
+    /** Nome da tela em pt-BR, ex.: 'CRM · Funil Vendas'. */
+    screen: string;
+    entities?: Array<{
+        type: AgentPageEntityType;
+        id: string;
+        label?: string;
+    }>;
+    /** Filtros visíveis, já legíveis: { 'Etapa': 'Proposta', 'Responsável': 'Bruno' }. */
+    filters?: Record<string, string>;
+}
+export declare const AGENT_PAGE_CONTEXT_LIMITS: {
+    readonly routeMaxChars: 300;
+    readonly screenMaxChars: 120;
+    readonly entitiesMax: 10;
+    readonly filtersMax: 12;
+    readonly valueMaxChars: 120;
+};
 /** Com que identidade o agente age nesta conversa (selo "Agindo como"). */
 export interface AgentSessionIdentity {
     actingAs: AgentActAs;
@@ -105,6 +286,16 @@ export interface AgentSessionToolStep {
     /** ISO */
     finishedAt?: string;
 }
+/** E4: como a mensagem do usuário entrou. */
+export type AgentSessionInputMode = 'voice';
+/**
+ * E4: o chat tem voz? Calculado no servidor: agente com `voiceEnabled` E o app com a habilidade de
+ * transcrição E a de voz marcadas numa integração.
+ */
+export interface AgentVoiceAvailability {
+    available: boolean;
+    reason?: 'agent_off' | 'no_stt' | 'no_tts';
+}
 export interface AgentSessionMessageResponse {
     id: string;
     sessionId: string;
@@ -114,6 +305,14 @@ export interface AgentSessionMessageResponse {
     /** Motivo legível em pt-BR quando `status` é `failed`. */
     error?: string;
     toolSteps: AgentSessionToolStep[];
+    /** E4: mensagem do usuário que veio de fala transcrita. Ausente = digitada. */
+    inputMode?: AgentSessionInputMode;
+    /** E5: a tela de onde a pessoa mandou (painel lateral). */
+    pageContext?: AgentPageContext;
+    /** E6: mensagem criada por uma execução agendada. */
+    trigger?: 'schedule';
+    /** E6: tarefa que gerou a mensagem. */
+    scheduledTaskId?: string;
     /** ISO */
     sentAt: string;
     /** ISO */
@@ -145,6 +344,10 @@ export interface AgentSessionResponse {
     canSend: boolean;
     canUpdate: boolean;
     canDelete: boolean;
+    /** E4: voz disponível nesta conversa (ver `AgentVoiceAvailability`). */
+    voice: AgentVoiceAvailability;
+    /** E6: conversa de uma tarefa agendada. */
+    scheduledTaskId?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -154,6 +357,8 @@ export interface InternalAgentOption {
     name: string;
     description?: string;
     conversationStarters: string[];
+    /** E4: voz disponível com este agente (microfone na tela de entrada). */
+    voice: AgentVoiceAvailability;
 }
 /** Referência a um anexo já enviado por POST /internal-agents/attachments. */
 export interface AgentSessionAttachmentRef {
@@ -170,10 +375,14 @@ export interface CreateAgentSessionRequest {
     agentId: string;
     text: string;
     attachments?: AgentSessionAttachmentRef[];
+    /** E5: enviado pelo painel lateral. */
+    pageContext?: AgentPageContext;
 }
 export interface SendAgentSessionMessageRequest {
     text: string;
     attachments?: AgentSessionAttachmentRef[];
+    /** E5: enviado pelo painel lateral. */
+    pageContext?: AgentPageContext;
 }
 export interface UpdateAgentSessionRequest {
     title?: string;
@@ -244,4 +453,51 @@ export interface InternalAgentSessionUpdatedEvent {
 }
 export interface InternalAgentSessionDeletedEvent {
     sessionId: string;
+}
+/**
+ * Um pedaço de áudio da resposta, gerado no servidor frase a frase a partir do texto que o próprio agente
+ * escreveu. Só é emitido quando a última mensagem do usuário foi falada. Tocar em ordem de `seq` (0, 1, 2…).
+ */
+export interface InternalAgentSpeechChunkEvent {
+    sessionId: string;
+    messageId: string;
+    seq: number;
+    /** ex.: 'audio/mpeg' */
+    mimeType: string;
+    audioBase64: string;
+    /** A frase já preparada para leitura (sem markdown), para legenda. */
+    text: string;
+}
+export interface InternalAgentSpeechEndEvent {
+    sessionId: string;
+    messageId: string;
+    /** `failed`: a voz falhou; o texto da resposta segue normal. */
+    reason: 'done' | 'stopped' | 'failed';
+    /** Motivo legível em pt-BR quando `failed`. */
+    error?: string;
+}
+/** Voz pronta oferecida no editor do agente (GET /internal-agents/speech-voices). */
+export interface AgentSpeechVoiceOption {
+    /** Valor gravado em `voiceConfig.speechVoice`, ou o id do documento em `voices` quando `cloned`. */
+    id: string;
+    name: string;
+    description?: string;
+    /** Voz clonada (cadastro de Vozes). */
+    cloned?: boolean;
+    /** É a voz padrão da integração. */
+    isDefault?: boolean;
+}
+export interface AgentSpeechVoicesResponse {
+    /** `false` quando nenhuma integração do app tem a habilidade de voz marcada. */
+    available: boolean;
+    /** Modelo de voz da integração marcada (slug), quando houver. */
+    model?: string;
+    voices: AgentSpeechVoiceOption[];
+}
+/** POST /internal-agents/speech-preview — amostra para o botão "Ouvir exemplo" do editor. Devolve áudio. */
+export interface AgentSpeechPreviewRequest {
+    speechVoice?: string;
+    /** Voz clonada (id do documento em `voices`). */
+    voiceId?: string;
+    speed?: number;
 }

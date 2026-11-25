@@ -85,6 +85,10 @@ var NotificationType;
     NotificationType["EVENT_REMINDER"] = "event_reminder";
     NotificationType["AGENDA_DAILY_SUMMARY"] = "agenda_daily_summary";
     // Automação (2026-08-22)
+    // E6 dos agentes internos (25/11/2026): resultado e pausa de tarefa agendada. FORA de
+    // DEFAULT_NOTIFICATION_TYPES — os canais vêm da própria tarefa (decisão do dono Q1), não das preferências.
+    NotificationType["INTERNAL_AGENT_TASK_RESULT"] = "internal_agent_task_result";
+    NotificationType["INTERNAL_AGENT_TASK_PAUSED"] = "internal_agent_task_paused";
     NotificationType["WORKFLOW_AUTO_PAUSED"] = "workflow_auto_paused";
     // Campanhas e integrações (2026-08-27)
     NotificationType["CAMPAIGN_AUTO_PAUSED"] = "campaign_auto_paused";
@@ -201,6 +205,10 @@ exports.OPT_IN_FACTORY_NOTIFICATION_TYPES = [
 exports.FACTORY_EXCLUDED_NOTIFICATION_TYPES = [
     NotificationType.SLA_WARNING,
     NotificationType.SLA_BREACH,
+    // Tarefas agendadas dos agentes internos (E6, 25/11/2026): os canais vêm da própria tarefa, escolhidos por
+    // quem a criou (decisão do dono Q1) — o envio ignora as preferências. Ficam fora das listas de fábrica.
+    NotificationType.INTERNAL_AGENT_TASK_RESULT,
+    NotificationType.INTERNAL_AGENT_TASK_PAUSED,
 ];
 /**
  * **Lista de fábrica** dos canais sino/push/som (2026-08-17).

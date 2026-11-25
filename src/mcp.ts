@@ -123,3 +123,28 @@ export interface McpConnectionsListResponse {
   mcpUrl: string;
   connections: McpConnectionResponse[];
 }
+
+
+// ── E5 dos agentes internos (25/11/2026): exportar com link ──
+
+/**
+ * Arquivo gerado por uma ferramenta (exportação). Pelo MCP, o resultado da ferramenta traz
+ * `{ file: ExportedFileDescriptor }` em vez do conteúdo — o modelo dá o link para a pessoa.
+ */
+export interface ExportedFileDescriptor {
+  fileId: string;
+  filename: string;
+  format: 'csv' | 'xlsx' | 'pdf';
+  mimeType: string;
+  size: number;
+  rows?: number;
+  truncated?: boolean;
+  totalRows?: number;
+  /** Exportação pelo MCP: link assinado que abre sem login (decisão do dono: 7 dias). Na conversa interna: ausente. */
+  url?: string;
+  /** ISO. Exportação pelo MCP. */
+  expiresAt?: string;
+}
+
+/** Validade do link e do arquivo exportado pelo MCP (decisão do dono, 25/11/2026). */
+export const MCP_EXPORT_LINK_DAYS = 7;

@@ -235,3 +235,19 @@ export declare function isGatewayCapable(modelId: string): boolean;
  * gravado com o nome que o provedor usou, que é melhor que perder o dado.
  */
 export declare function canonicalModelId(modelIdOrSlug: string): string;
+/** Modelo de voz quando a integração do gateway não escolhe outro. */
+export declare const DEFAULT_GATEWAY_SPEECH_MODEL = "google/gemini-3.8-flash-tts";
+/** Voz quando nem o agente nem a integração escolhem: a que o dono escolheu de ouvido em 05/11/2026. */
+export declare const DEFAULT_GATEWAY_SPEECH_VOICE = "Laomedeia";
+/** Voz pronta de um modelo de voz do gateway, para os seletores. */
+export interface GatewaySpeechVoice {
+    id: string;
+    name: string;
+    description?: string;
+}
+/**
+ * Vozes oferecidas por modelo (chave = slug do gateway). Lista CURADA: as vozes do Gemini falam vários
+ * idiomas e o idioma vem da instrução e de `language`; aqui ficam só as que fazem sentido em pt-BR.
+ * Modelo sem entrada aqui = só a voz padrão da integração.
+ */
+export declare const GATEWAY_SPEECH_VOICES: Record<string, GatewaySpeechVoice[]>;

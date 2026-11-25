@@ -234,10 +234,7 @@ export interface AIAgent {
   skillWorkflowIds?: string[];
   databases?: string[];                     // Database IDs that the agent can access
   voiceEnabled: boolean;
-  voiceConfig?: {
-    aiProviderId: string;
-    voiceId?: string;  // ✅ ID da voz específica (ex: 'alloy', 'nova', 'shimmer' para OpenAI, ou voice ID do ElevenLabs)
-  };
+  voiceConfig?: AIAgentVoiceConfig;
   enabledCapabilities: AIAgentCapabilityConfig[];  // ✅ UNIFIED: Capabilities + Configurations
   webhooks?: AIAgentWebhook[];                     // Webhook configurations for external data injection
   /**
@@ -448,10 +445,7 @@ export interface CreateAIAgentRequest {
   skillWorkflowIds?: string[];
   databases?: string[];                     // Database IDs that the agent can access
   voiceEnabled?: boolean;
-  voiceConfig?: {
-    aiProviderId: string;
-    voiceId?: string;
-  };
+  voiceConfig?: AIAgentVoiceConfig;
   enabledCapabilities?: AIAgentCapabilityConfig[];  // ✅ UNIFIED: Capabilities + Configurations
   escalationConfig?: AIAgentEscalationConfig;
   /** Ajuste por agente do cadastro oficial do negócio (herda da empresa campo a campo) */
@@ -488,15 +482,33 @@ export interface UpdateAIAgentRequest {
   skillWorkflowIds?: string[];
   databases?: string[];                     // Database IDs that the agent can access
   voiceEnabled?: boolean;
-  voiceConfig?: {
-    aiProviderId: string;
-    voiceId?: string;
-  };
+  voiceConfig?: AIAgentVoiceConfig;
   enabledCapabilities?: AIAgentCapabilityConfig[];  // ✅ UNIFIED: Capabilities + Configurations
   escalationConfig?: AIAgentEscalationConfig;
   /** Ajuste por agente do cadastro oficial do negócio (herda da empresa campo a campo) */
   officialInfoOverride?: AIAgentOfficialInfoOverride;
   webhooks?: Omit<AIAgentWebhook, 'createdAt' | 'updatedAt'>[];
+}
+
+/**
+ * Voz do agente.
+ *
+ * - Atendimento: `voiceEnabled` deixa o agente mandar áudio (`send_audio_message`).
+ * - Interno (E4, 25/11/2026): `voiceEnabled` liga o microfone e a leitura em voz no chat. Ausente = desligado.
+ *
+ * Qual integração fala é escolhido pela HABILIDADE marcada no app, como a transcrição: voz comum usa a
+ * integração com `text_to_speech` marcada (padrão: Vercel AI Gateway); voz clonada (`voiceId`) usa a
+ * integração com `voice_cloning` marcada, porque a voz só existe na conta que a clonou.
+ */
+export interface AIAgentVoiceConfig {
+  /** Legado: o provedor que o editor antigo gravava. A escolha real é pela habilidade marcada. */
+  aiProviderId?: string;
+  /** Voz CLONADA: id do documento em `voices`. Tem prioridade sobre `speechVoice`. */
+  voiceId?: string;
+  /** Voz pronta do modelo de voz marcado no app (ex.: 'Laomedeia' do Gemini). Ausente = padrão da integração. */
+  speechVoice?: string;
+  /** Velocidade de 0.75 a 1.5. Ausente = 1. Modelos que não aceitam ignoram. */
+  speed?: number;
 }
 
 export interface AIAgentQuery extends PaginationQuery {

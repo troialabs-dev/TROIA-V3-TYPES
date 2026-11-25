@@ -1,7 +1,7 @@
 "use strict";
 // MCP Server types
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MCP_MODULE_GROUP_LABELS = exports.MCP_MODULE_GROUP_ORDER = exports.MCP_ACCOUNT_MODULE = void 0;
+exports.MCP_EXPORT_LINK_DAYS = exports.MCP_MODULE_GROUP_LABELS = exports.MCP_MODULE_GROUP_ORDER = exports.MCP_ACCOUNT_MODULE = void 0;
 /**
  * Módulo de tela que só existe para o MCP: as ferramentas de "Minha conta"
  * (perfil, preferências do próprio usuário), que não pertencem a nenhum módulo
@@ -29,3 +29,5 @@ exports.MCP_MODULE_GROUP_LABELS = {
     reports: 'Relatórios',
     settings: 'Empresa e configurações',
 };
+/** Validade do link e do arquivo exportado pelo MCP (decisão do dono, 25/11/2026). */
+exports.MCP_EXPORT_LINK_DAYS = 7;

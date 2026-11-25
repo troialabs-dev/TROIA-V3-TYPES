@@ -3,7 +3,7 @@
 // AI PROVIDER CONFIGURATIONS
 // ============================================================================
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_AGENT_MODEL = exports.AI_MODELS = void 0;
+exports.GATEWAY_SPEECH_VOICES = exports.DEFAULT_GATEWAY_SPEECH_VOICE = exports.DEFAULT_GATEWAY_SPEECH_MODEL = exports.DEFAULT_AGENT_MODEL = exports.AI_MODELS = void 0;
 exports.getAgentModels = getAgentModels;
 exports.getViableModels = getViableModels;
 exports.getProviderFromModel = getProviderFromModel;
@@ -854,7 +854,7 @@ exports.AI_MODELS = [
         provider: 'openai',
         purpose: 'tts',
         features: [],
-        highlight: 'Voz sintetizada (padrão do sistema)',
+        highlight: 'Voz sintetizada da OpenAI (sai do ar em 06/01/2027)',
         // US$ 0.000015 por caractere = US$ 0.015 por 1.000 caracteres.
         audioPricing: { per1kChars: 0.015 },
         pricing: { input: 0, output: 0 },
@@ -871,6 +871,25 @@ exports.AI_MODELS = [
         highlight: 'Voz sintetizada em alta definição',
         // US$ 0.00003 por caractere = o DOBRO do TTS-1, e era cobrado igual.
         audioPricing: { per1kChars: 0.03 },
+        pricing: { input: 0, output: 0 },
+        contextWindow: 0,
+        maxOutputTokens: 0,
+    },
+    // Voz padrão desde 25/11/2026 (E4 dos agentes internos), pelo Vercel AI Gateway. É a mesma do bot do
+    // Gamerfy e da Uma Música: o dono escolheu a voz Laomedeia de ouvido em 05/11/2026 (sotaque brasileiro
+    // nativo; a Sarah do ElevenLabs era mais rápida mas americana; Luana e Harper da Microsoft não agradaram).
+    // O Google cobra por TOKEN (US$ 0,50 por 1M de entrada, US$ 9 por 1M de áudio, ~25 tokens de áudio por
+    // segundo). Em pt-BR, ~15 caracteres por segundo de fala: ≈ US$ 0,015 por 1.000 caracteres. É uma
+    // ESTIMATIVA — conferir com o custo que o gateway devolve no teste do DEV.
+    {
+        id: 'gemini-3.8-flash-tts',
+        gatewaySlug: 'google/gemini-3.8-flash-tts',
+        name: 'Gemini 3.8 Flash TTS',
+        provider: 'google',
+        purpose: 'tts',
+        features: [],
+        highlight: 'Voz padrão: brasileira nativa (Laomedeia)',
+        audioPricing: { per1kChars: 0.015 },
         pricing: { input: 0, output: 0 },
         contextWindow: 0,
         maxOutputTokens: 0,
@@ -1109,3 +1128,27 @@ function canonicalModelId(modelIdOrSlug) {
     const porSlug = exports.AI_MODELS.find((m) => m.gatewaySlug === modelIdOrSlug);
     return porSlug ? porSlug.id : modelIdOrSlug;
 }
+// ═══════════════════════════════════════════════════════════════
+// Voz pelo Vercel AI Gateway (E4 dos agentes internos, 25/11/2026)
+// ═══════════════════════════════════════════════════════════════
+/** Modelo de voz quando a integração do gateway não escolhe outro. */
+exports.DEFAULT_GATEWAY_SPEECH_MODEL = 'google/gemini-3.8-flash-tts';
+/** Voz quando nem o agente nem a integração escolhem: a que o dono escolheu de ouvido em 05/11/2026. */
+exports.DEFAULT_GATEWAY_SPEECH_VOICE = 'Laomedeia';
+/**
+ * Vozes oferecidas por modelo (chave = slug do gateway). Lista CURADA: as vozes do Gemini falam vários
+ * idiomas e o idioma vem da instrução e de `language`; aqui ficam só as que fazem sentido em pt-BR.
+ * Modelo sem entrada aqui = só a voz padrão da integração.
+ */
+exports.GATEWAY_SPEECH_VOICES = {
+    'google/gemini-3.8-flash-tts': [
+        { id: 'Laomedeia', name: 'Laomedeia', description: 'Animada — a escolhida para o Troia' },
+        { id: 'Kore', name: 'Kore', description: 'Firme' },
+        { id: 'Puck', name: 'Puck', description: 'Alegre' },
+        { id: 'Charon', name: 'Charon', description: 'Informativa' },
+        { id: 'Aoede', name: 'Aoede', description: 'Leve' },
+        { id: 'Achird', name: 'Achird', description: 'Amigável' },
+        { id: 'Sulafat', name: 'Sulafat', description: 'Calorosa' },
+        { id: 'Orus', name: 'Orus', description: 'Firme e grave' },
+    ],
+};

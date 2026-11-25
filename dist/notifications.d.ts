@@ -53,6 +53,8 @@ export declare enum NotificationType {
     SHIFT_REMINDER = "shift_reminder",
     EVENT_REMINDER = "event_reminder",// Lembrete de evento (X min antes) — event.reminders
     AGENDA_DAILY_SUMMARY = "agenda_daily_summary",// Resumo diário da agenda às 08:00
+    INTERNAL_AGENT_TASK_RESULT = "internal_agent_task_result",
+    INTERNAL_AGENT_TASK_PAUSED = "internal_agent_task_paused",
     WORKFLOW_AUTO_PAUSED = "workflow_auto_paused",// Workflow pausado sozinho (10 falhas seguidas ou canal excluído)
     CAMPAIGN_AUTO_PAUSED = "campaign_auto_paused",// Campanha pausada sozinha (canal desconectado ou excluído)
     WORKFLOW_FREQUENT_FAILURES = "workflow_frequent_failures",// Workflow falhando com frequência (sem chegar a pausar)

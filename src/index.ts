@@ -219,3 +219,9 @@ export * from './tags';
 
 // Relatório de CSAT — GET /api/reports/csat (permissão `reports-csat`)
 export * from './csat-report';
+
+// Agentes internos — chat da equipe com agentes de IA (E1, 24/11/2026)
+export * from './internal-agents';
+
+// Conexões MCP externas dos agentes de IA (E3, 24/11/2026)
+export * from './agent-mcp-connections';

@@ -13,6 +13,13 @@ export interface KanbanValueBreakdown {
 }
 export interface KanbanColumnPage<T> {
     columnId: string;
+    /**
+     * Nome da etapa (coluna) — vem no board (`GET /leads/kanban`, `GET /tickets/kanban`).
+     * A tela lê o nome das etapas por outra rota; quem só tem esta resposta (o MCP
+     * da Troia e as funções da plataforma dos agentes) não tinha como dizer em que
+     * etapa o item está (teste ao vivo de 24/11/2026: "etapa não informada").
+     */
+    columnName?: string;
     /** Total REAL da coluna no backend, respeitando todos os filtros ativos. */
     count: number;
     /** Soma do campo de valor (leads: budget) da coluna INTEIRA. */

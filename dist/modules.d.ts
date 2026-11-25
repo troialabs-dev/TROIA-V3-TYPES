@@ -12,7 +12,7 @@ export type PermissionScope = 'all' | 'own' | 'team';
  *
  * Adding a new module? Update this list first!
  */
-export type ValidModuleId = 'app' | 'users' | 'companies' | 'levels' | 'plans' | 'channels' | 'integrations' | 'company-integrations' | 'payments' | 'crm' | 'chat' | 'customers' | 'activities' | 'conversations' | 'conversation-messages' | 'tickets' | 'assignments' | 'contacts' | 'groups' | 'group-participants' | 'funnels' | 'funnel-steps' | 'goals' | 'projects' | 'gamification' | 'products' | 'orders' | 'campaigns' | 'audiences' | 'templates' | 'quick-messages' | 'calendar' | 'calls' | 'reports' | 'reports-csat' | 'knowledge' | 'company' | 'teams' | 'skills' | 'shifts' | 'services' | 'email-templates' | 'email-domains' | 'saved-cards' | 'api-keys' | 'agents' | 'tools' | 'databases' | 'workflows' | 'websites' | 'voices' | 'forms' | 'units' | 'tags' | 'checklists' | 'sla-policies' | 'ticket-pipelines' | 'ticket-stages' | 'dashboards-commercial' | 'dashboards-support' | 'dashboards-marketing' | 'dashboards-analytics';
+export type ValidModuleId = 'app' | 'users' | 'companies' | 'levels' | 'plans' | 'channels' | 'integrations' | 'company-integrations' | 'payments' | 'crm' | 'chat' | 'customers' | 'activities' | 'conversations' | 'conversation-messages' | 'tickets' | 'assignments' | 'contacts' | 'groups' | 'group-participants' | 'funnels' | 'funnel-steps' | 'goals' | 'projects' | 'gamification' | 'products' | 'orders' | 'campaigns' | 'audiences' | 'templates' | 'quick-messages' | 'calendar' | 'calls' | 'reports' | 'reports-csat' | 'knowledge' | 'company' | 'teams' | 'skills' | 'shifts' | 'services' | 'email-templates' | 'email-domains' | 'saved-cards' | 'api-keys' | 'agents' | 'internal-agents' | 'tools' | 'databases' | 'workflows' | 'websites' | 'voices' | 'forms' | 'units' | 'tags' | 'checklists' | 'sla-policies' | 'ticket-pipelines' | 'ticket-stages' | 'dashboards-commercial' | 'dashboards-support' | 'dashboards-marketing' | 'dashboards-analytics';
 export interface Module extends AppAwareDocument {
     name: string;
     displayName: string;
@@ -21,6 +21,12 @@ export interface Module extends AppAwareDocument {
     availableActions: PermissionAction[];
     requiresScope: boolean;
     defaultScope: PermissionScope;
+    /**
+     * Escopos que a tela de níveis oferece quando `requiresScope = true`.
+     * Ausente = os três (`own`, `team`, `all`). Ex.: agentes internos só têm
+     * "só as minhas" (`own`) e "de todos" (`all`).
+     */
+    allowedScopes?: PermissionScope[];
     category: ModuleCategory;
     status: ActiveStatus;
 }

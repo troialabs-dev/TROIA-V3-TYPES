@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AGENT_SEGMENT_LABELS = exports.AGENT_CATEGORY_LABELS = exports.AgentSegment = exports.AgentCategory = void 0;
+exports.PLATFORM_FUNCTION_LIMITS = exports.AI_AGENT_KIND_LABELS = exports.DEFAULT_AI_AGENT_KIND = exports.AI_AGENT_KINDS = exports.AGENT_SEGMENT_LABELS = exports.AGENT_CATEGORY_LABELS = exports.AgentSegment = exports.AgentCategory = void 0;
+exports.getAgentKind = getAgentKind;
+exports.isInternalAgent = isInternalAgent;
 /**
  * Categoria funcional do agente — descreve O QUE ele FAZ.
  *
@@ -69,4 +71,35 @@ exports.AGENT_SEGMENT_LABELS = {
     [AgentSegment.SOLAR_ENERGY]: 'Energia Solar',
     [AgentSegment.APPAREL]: 'Confecção',
     [AgentSegment.GENERIC]: 'Genérico',
+};
+/**
+ * Tipo do agente — diz COM QUEM ele conversa (agentes internos, 24/11/2026).
+ *
+ * - `customer_service`: atende clientes pelos canais (gatilhos, canais,
+ *   transferência). Todos os agentes criados antes de 24/11/2026 são deste tipo.
+ * - `internal`: conversa com a equipe da empresa na tela de agentes internos.
+ *   Nunca é disparado por mensagem de cliente, gatilho de lead nem nó de workflow.
+ *
+ * Fixo na criação. Ausente = `customer_service` (use `getAgentKind`).
+ * Não confundir com `category` (O QUE o agente faz).
+ */
+exports.AI_AGENT_KINDS = ['customer_service', 'internal'];
+exports.DEFAULT_AI_AGENT_KIND = 'customer_service';
+exports.AI_AGENT_KIND_LABELS = {
+    customer_service: 'Agente de atendimento',
+    internal: 'Agente interno',
+};
+/** Tipo efetivo do agente: campo ausente (agente antigo) = atendimento. */
+function getAgentKind(agent) {
+    return agent.kind === 'internal' ? 'internal' : exports.DEFAULT_AI_AGENT_KIND;
+}
+/** Atalho: o agente conversa com a equipe (não atende clientes pelos canais). */
+function isInternalAgent(agent) {
+    return getAgentKind(agent) === 'internal';
+}
+exports.PLATFORM_FUNCTION_LIMITS = {
+    findMaxResults: 8,
+    resultMaxChars: 12_000,
+    customerAllowedMax: 30,
+    confirmationTtlMinutes: 15,
 };

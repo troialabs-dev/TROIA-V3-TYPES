@@ -100,6 +100,15 @@ exports.SOCKET_EVENTS = {
     // Lead Capture (QR Code) — emitido SÓ na sala `user:{userId}` do vendedor
     // a cada mudança de status da sessão (waiting_scan → filled → confirmed → …)
     LEAD_CAPTURE_SESSION_UPDATED: 'lead-capture:session-updated',
+    // Agentes internos (E1, 24/11/2026) — sempre na sala user:{dono da conversa}
+    INTERNAL_AGENT_RUN_STARTED: 'internal-agent:run-started',
+    INTERNAL_AGENT_RUN_DELTA: 'internal-agent:run-delta',
+    INTERNAL_AGENT_RUN_STEP: 'internal-agent:run-step',
+    INTERNAL_AGENT_RUN_FINISHED: 'internal-agent:run-finished',
+    INTERNAL_AGENT_SESSION_UPDATED: 'internal-agent:session-updated',
+    INTERNAL_AGENT_SESSION_DELETED: 'internal-agent:session-deleted',
+    // E2: cartão de confirmação criado, decidido, expirado ou que falhou
+    INTERNAL_AGENT_CONFIRMATION_UPDATED: 'internal-agent:confirmation-updated',
 };
 // ============================================================================
 // ROOM PATTERNS

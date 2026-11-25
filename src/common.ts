@@ -91,6 +91,12 @@ export const WRITTEN_ACTOR_TYPES: readonly ActorType[] = [
 export interface CreatorStamp {
   createdByType?: ActorType;
   createdBy?: string;
+  /**
+   * Agentes internos E2 (24/11/2026, plano 2026-11-24-agentes-internos-e2.md E2-11): pessoa (id em
+   * `users`) em nome de quem o agente agiu, quando ele usa o nível de quem pede. Só com
+   * `createdByType === 'bot'`; com o nível próprio do agente fica ausente.
+   */
+  onBehalfOf?: string;
 }
 
 // ============================================================

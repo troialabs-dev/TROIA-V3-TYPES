@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { ActiveStatus, PaginationQuery } from './common';
 import { ToolFilterCondition } from './custom-actions';
+import type { McpGrantableModule, McpModuleGrant } from './mcp';
 
 /**
  * Categoria funcional do agente — descreve O QUE ele FAZ.
@@ -72,6 +73,36 @@ export const AGENT_SEGMENT_LABELS: Record<AgentSegment, string> = {
   [AgentSegment.APPAREL]: 'Confecção',
   [AgentSegment.GENERIC]: 'Genérico',
 };
+
+/**
+ * Tipo do agente — diz COM QUEM ele conversa (agentes internos, 24/11/2026).
+ *
+ * - `customer_service`: atende clientes pelos canais (gatilhos, canais,
+ *   transferência). Todos os agentes criados antes de 24/11/2026 são deste tipo.
+ * - `internal`: conversa com a equipe da empresa na tela de agentes internos.
+ *   Nunca é disparado por mensagem de cliente, gatilho de lead nem nó de workflow.
+ *
+ * Fixo na criação. Ausente = `customer_service` (use `getAgentKind`).
+ * Não confundir com `category` (O QUE o agente faz).
+ */
+export const AI_AGENT_KINDS = ['customer_service', 'internal'] as const;
+export type AIAgentKind = (typeof AI_AGENT_KINDS)[number];
+export const DEFAULT_AI_AGENT_KIND: AIAgentKind = 'customer_service';
+
+export const AI_AGENT_KIND_LABELS: Record<AIAgentKind, string> = {
+  customer_service: 'Agente de atendimento',
+  internal: 'Agente interno',
+};
+
+/** Tipo efetivo do agente: campo ausente (agente antigo) = atendimento. */
+export function getAgentKind(agent: { kind?: AIAgentKind | null | undefined }): AIAgentKind {
+  return agent.kind === 'internal' ? 'internal' : DEFAULT_AI_AGENT_KIND;
+}
+
+/** Atalho: o agente conversa com a equipe (não atende clientes pelos canais). */
+export function isInternalAgent(agent: { kind?: AIAgentKind | null | undefined }): boolean {
+  return getAgentKind(agent) === 'internal';
+}
 
 /**
  * Keyword matching modes for message_received trigger
@@ -171,6 +202,20 @@ export interface AIAgent {
   maxTokens: number;
   delay: number;                            // Debounce delay in seconds (10-120) before agent responds
   version?: string;                         // Semver version (e.g., "1.0.0")
+  /**
+   * Com quem o agente conversa: clientes pelos canais ou a equipe na tela de
+   * agentes internos. Fixo na criação. Ausente = `customer_service`
+   * (`getAgentKind`).
+   */
+  kind?: AIAgentKind;
+  /** Sugestões de início na tela de agentes internos. Só usado por agente interno; máx 6 × 120. */
+  conversationStarters?: string[];
+  /** Funções da plataforma (E2, 24/11/2026). Ausente = desligado. */
+  platformFunctions?: AIAgentPlatformFunctionsConfig;
+  /** D9. Só atendimento; no interno é ignorado (sempre "só usuários"). Ausente = false. */
+  onlyCompanyUsers?: boolean;
+  /** D12. Pedir confirmação antes de alterar dados. Ausente = false. */
+  requireConfirmation?: boolean;
   /**
    * Categoria funcional do agente — usada pra filtrar cenários de teste
    * relevantes no fluxo de treinamento. Opcional por retrocompatibilidade:
@@ -383,6 +428,16 @@ export interface CreateAIAgentRequest {
   temperature: number;
   maxTokens: number;
   delay?: number;
+  /** Com quem o agente conversa. Fixo depois de criado. Default `customer_service`. */
+  kind?: AIAgentKind;
+  /** Sugestões de início na tela de agentes internos. Só usado por agente interno; máx 6 × 120. */
+  conversationStarters?: string[];
+  /** Funções da plataforma (E2). Ausente = desligado. */
+  platformFunctions?: AIAgentPlatformFunctionsConfig;
+  /** D9. Só atendimento. Ausente = false. */
+  onlyCompanyUsers?: boolean;
+  /** D12. Ausente = false. */
+  requireConfirmation?: boolean;
   /** Categoria funcional (SDR, ATENDENTE, etc). Default 'outro' se omitido. */
   category?: AgentCategory;
   /** Segmento de mercado (EDUCACIONAL, IMOBILIARIA, etc). Default 'generico' se omitido. */
@@ -412,6 +467,19 @@ export interface UpdateAIAgentRequest {
   temperature?: number;
   maxTokens?: number;
   delay?: number;
+  /**
+   * O tipo é fixo na criação: só é aceito igual ao atual (formulário que
+   * reenvia o agente inteiro). Valor diferente é recusado com 422.
+   */
+  kind?: AIAgentKind;
+  /** Sugestões de início na tela de agentes internos. Só usado por agente interno; máx 6 × 120. */
+  conversationStarters?: string[];
+  /** Funções da plataforma (E2). */
+  platformFunctions?: AIAgentPlatformFunctionsConfig;
+  /** D9. Só atendimento. */
+  onlyCompanyUsers?: boolean;
+  /** D12. */
+  requireConfirmation?: boolean;
   category?: AgentCategory;
   segment?: AgentSegment;
   triggers?: AIAgentTriggers;
@@ -434,6 +502,8 @@ export interface UpdateAIAgentRequest {
 export interface AIAgentQuery extends PaginationQuery {
   status?: ActiveStatus | undefined;
   voiceEnabled?: boolean | undefined;
+  /** Filtra pelo tipo. `customer_service` também traz os agentes sem o campo. */
+  kind?: AIAgentKind | undefined;
 }
 
 /**
@@ -467,3 +537,91 @@ export interface AgentVersionResponse extends Omit<AgentVersion, '_id'> {
  * Query parameters for agent versions
  */
 export interface AgentVersionQuery extends PaginationQuery {}
+
+// ============================================================================
+// FUNÇÕES DA PLATAFORMA (E2, 24/11/2026)
+// Contrato: DOCS/superpowers/plans/2026-11-24-agentes-internos-e2.md §3–§5.
+// Respostas do dono: Q5 (apagar liberado pelo nível), Q6 (nível próprio = tudo o
+// que o nível permite, sem lista conferida), Q8 (teto por módulo já na E2).
+// ============================================================================
+
+/** Com o nível de quem o agente age: quem está pedindo, ou o nível próprio do agente (D7). */
+export type AgentActAs = 'requester' | 'agent';
+
+export interface AIAgentPlatformFunctionsConfig {
+  enabled: boolean;
+  /** Ausente = 'requester'. */
+  actAs?: AgentActAs;
+  /** Obrigatório quando enabled && actAs === 'agent'. Nível cadastrado (D8). */
+  levelId?: string;
+  /**
+   * Só atendimento, só actAs 'agent', só para contato que NÃO é usuário da empresa (E2-7).
+   * Nomes de função do catálogo. Ausente/vazio = nenhuma.
+   */
+  customerAllowedFunctions?: string[];
+  /**
+   * (Q8) Teto por módulo — mesmo formato das conexões OAuth do MCP: módulo → 'read' | 'write'.
+   * Módulo ausente = sem acesso. Vale para os dois principais e é sempre limitado pelo nível
+   * (o teto só tira, nunca dá). Obrigatório com ao menos um módulo quando `enabled: true`.
+   */
+  modules?: McpModuleGrant;
+}
+
+export const PLATFORM_FUNCTION_LIMITS = {
+  findMaxResults: 8,
+  resultMaxChars: 12_000,
+  customerAllowedMax: 30,
+  confirmationTtlMinutes: 15,
+} as const;
+
+/**
+ * Por que uma função não está disponível ao agente.
+ * - `never_for_agents`: lista fixa "nunca pelo agente" (configuração, segurança, envio em massa).
+ * - `no_permission_write`: função sem permissão de módulo bloqueada pela regra P3.
+ * - `outside_agent_modules`: fora do teto de módulos do agente (Q8). Só em negações do portão e em R2.
+ */
+export type PlatformFunctionBlockReason =
+  | 'never_for_agents'
+  | 'no_permission_write'
+  | 'outside_agent_modules';
+
+export interface PlatformFunctionCatalogItem {
+  /** Nome da função no catálogo do MCP ('create_ticket'). */
+  name: string;
+  /** Rótulo em pt-BR para passos e cartões ('Criar ticket'). */
+  label: string;
+  description: string;
+  /** Módulo usado no teto (grantModule do MCP). */
+  module: string;
+  access: 'read' | 'write';
+  requiresPermission: boolean;
+  /**
+   * Com nível próprio do agente, esta função pode entrar?
+   * (Q6) = fora de NEVER_FOR_AGENTS e exige permissão de módulo (P3 bloqueia as sem permissão).
+   */
+  agentPrincipalAllowed: boolean;
+  /** Pode ser liberada para clientes (tem vínculo contactId/conversationId)? */
+  customerBindable: boolean;
+  blockedReason?: PlatformFunctionBlockReason;
+}
+
+export interface PlatformFunctionCatalogResponse {
+  items: PlatformFunctionCatalogItem[];
+  modules: Array<{ module: string; label: string }>;
+}
+
+export interface AgentEffectiveFunctionsResponse {
+  /** null quando actAs = 'requester' (depende de quem pede). */
+  levelName: string | null;
+  /** Já com o teto de módulos salvo do agente aplicado (Q8). */
+  functions: Array<Pick<PlatformFunctionCatalogItem, 'name' | 'label' | 'module' | 'access'>>;
+}
+
+/**
+ * (Q8) Módulos que o editor oferece no teto — reusa `McpGrantableModule` da tela de autorização do MCP.
+ * `canWrite` = existe ao menos uma função de alteração do módulo alcançável (NEVER_FOR_AGENTS + P3,
+ * mais o nível quando `levelId` foi informado).
+ */
+export interface PlatformFunctionGrantableModulesResponse {
+  modules: McpGrantableModule[];
+}

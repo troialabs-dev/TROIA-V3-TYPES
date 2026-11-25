@@ -67,6 +67,7 @@ export type ValidModuleId =
   | 'saved-cards'
   | 'api-keys'
   | 'agents'
+  | 'internal-agents'
   | 'tools'
   | 'databases'
   | 'workflows'
@@ -94,6 +95,12 @@ export interface Module extends AppAwareDocument {
   availableActions: PermissionAction[]; // Actions disponíveis neste módulo
   requiresScope: boolean; // Se precisa selecionar scope ou usa "all" automático
   defaultScope: PermissionScope; // Scope padrão quando requiresScope = false
+  /**
+   * Escopos que a tela de níveis oferece quando `requiresScope = true`.
+   * Ausente = os três (`own`, `team`, `all`). Ex.: agentes internos só têm
+   * "só as minhas" (`own`) e "de todos" (`all`).
+   */
+  allowedScopes?: PermissionScope[];
   category: ModuleCategory;
   status: ActiveStatus;
 }

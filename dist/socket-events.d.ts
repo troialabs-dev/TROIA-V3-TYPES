@@ -7,6 +7,7 @@ import type { SoundKey } from './notifications';
 import type { ChannelDisconnectInfo } from './channels';
 import type { ChannelSyncStatus, ChannelActivityType } from './channel-dashboard';
 import type { LeadCaptureSession } from './lead-capture';
+import type { InternalAgentRunStartedEvent, InternalAgentRunDeltaEvent, InternalAgentRunStepEvent, InternalAgentRunFinishedEvent, InternalAgentSessionUpdatedEvent, InternalAgentSessionDeletedEvent, InternalAgentConfirmationUpdatedEvent } from './internal-agents';
 export declare const SOCKET_EVENTS: {
     readonly CONVERSATION_MESSAGE: "conversation:message";
     readonly CONVERSATION_UPDATED: "conversation:updated";
@@ -75,6 +76,13 @@ export declare const SOCKET_EVENTS: {
     readonly HISTORY_IMPORT_COMPLETED: "history-import:completed";
     readonly HISTORY_IMPORT_FAILED: "history-import:failed";
     readonly LEAD_CAPTURE_SESSION_UPDATED: "lead-capture:session-updated";
+    readonly INTERNAL_AGENT_RUN_STARTED: "internal-agent:run-started";
+    readonly INTERNAL_AGENT_RUN_DELTA: "internal-agent:run-delta";
+    readonly INTERNAL_AGENT_RUN_STEP: "internal-agent:run-step";
+    readonly INTERNAL_AGENT_RUN_FINISHED: "internal-agent:run-finished";
+    readonly INTERNAL_AGENT_SESSION_UPDATED: "internal-agent:session-updated";
+    readonly INTERNAL_AGENT_SESSION_DELETED: "internal-agent:session-deleted";
+    readonly INTERNAL_AGENT_CONFIRMATION_UPDATED: "internal-agent:confirmation-updated";
 };
 export type SocketEventName = typeof SOCKET_EVENTS[keyof typeof SOCKET_EVENTS];
 /**
@@ -763,6 +771,13 @@ export interface SocketEventMap {
     [SOCKET_EVENTS.CREDIT_PAYMENT_CONFIRMED]: CreditPaymentConfirmedEvent;
     [SOCKET_EVENTS.NOTIFICATION_SOUND]: SoundNotificationEvent;
     [SOCKET_EVENTS.LEAD_CAPTURE_SESSION_UPDATED]: LeadCaptureSessionUpdatedPayload;
+    [SOCKET_EVENTS.INTERNAL_AGENT_RUN_STARTED]: InternalAgentRunStartedEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_RUN_DELTA]: InternalAgentRunDeltaEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_RUN_STEP]: InternalAgentRunStepEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_RUN_FINISHED]: InternalAgentRunFinishedEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_SESSION_UPDATED]: InternalAgentSessionUpdatedEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_SESSION_DELETED]: InternalAgentSessionDeletedEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_CONFIRMATION_UPDATED]: InternalAgentConfirmationUpdatedEvent;
 }
 export declare const SOCKET_ROOMS: {
     /**

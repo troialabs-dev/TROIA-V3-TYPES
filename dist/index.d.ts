@@ -98,3 +98,5 @@ export * from './gamification';
 export * from './seller-dashboard';
 export * from './tags';
 export * from './csat-report';
+export * from './internal-agents';
+export * from './agent-mcp-connections';

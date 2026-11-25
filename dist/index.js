@@ -180,3 +180,7 @@ __exportStar(require("./seller-dashboard"), exports);
 __exportStar(require("./tags"), exports);
 // Relatório de CSAT — GET /api/reports/csat (permissão `reports-csat`)
 __exportStar(require("./csat-report"), exports);
+// Agentes internos — chat da equipe com agentes de IA (E1, 24/11/2026)
+__exportStar(require("./internal-agents"), exports);
+// Conexões MCP externas dos agentes de IA (E3, 24/11/2026)
+__exportStar(require("./agent-mcp-connections"), exports);

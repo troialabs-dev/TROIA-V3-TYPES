@@ -20,6 +20,14 @@ export type McpModuleAccess = 'read' | 'write';
 export declare const MCP_ACCOUNT_MODULE = "account";
 /** Liberação de uma conexão: módulo → acesso. Módulo ausente = sem acesso. */
 export type McpModuleGrant = Record<string, McpModuleAccess>;
+/**
+ * Área em que a tela de autorização agrupa os módulos. É só apresentação:
+ * a liberação continua módulo por módulo.
+ */
+export type McpModuleGroup = 'account' | 'service' | 'sales' | 'marketing' | 'automation' | 'team' | 'reports' | 'settings';
+/** Ordem das áreas na tela de autorização. */
+export declare const MCP_MODULE_GROUP_ORDER: readonly McpModuleGroup[];
+export declare const MCP_MODULE_GROUP_LABELS: Readonly<Record<McpModuleGroup, string>>;
 /** Um módulo que o usuário pode liberar na tela de autorização. */
 export interface McpGrantableModule {
     /** Nome do módulo no catálogo (`crm`, `chat`…) ou `account`. */
@@ -27,6 +35,8 @@ export interface McpGrantableModule {
     displayName: string;
     /** `true` quando há alguma ferramenta de alteração que o nível do usuário permite neste módulo. */
     canWrite: boolean;
+    /** Área em que a tela agrupa o módulo. */
+    group: McpModuleGroup;
 }
 /** Pedido de autorização mostrado na tela `/mcp/autorizar/:requestId`. */
 export interface McpAuthorizationRequestInfo {

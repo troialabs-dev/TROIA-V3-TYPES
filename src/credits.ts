@@ -326,6 +326,8 @@ export type CreditTransactionSource =
 
 export interface CreditTransactionMetadata {
   conversationId?: string;
+  /** Conversa do chat de agentes internos (E1, 24/11/2026). Não confundir com `sessionId` dos traces. */
+  agentSessionId?: string;
   channelId?: string;
   campaignId?: string;
   contactId?: string;
@@ -348,6 +350,12 @@ export interface CreditTransactionMetadata {
   workflowId?: string;
   nodeId?: string;
   toolNames?: string[];
+  /** Função da plataforma chamada pelo agente (E2, débito MCP_TOOL_CALL pelo portão). */
+  platformFunction?: string;
+  /** Conexão MCP externa usada pelo agente (E3, débito AI_TOOL_EXECUTION). */
+  mcpConnectionId?: string;
+  /** Nome REAL da ferramenta no servidor MCP externo (E3). */
+  mcpTool?: string;
   url?: string;
   description?: string;
   adminName?: string;

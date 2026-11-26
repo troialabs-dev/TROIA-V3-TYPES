@@ -115,6 +115,8 @@ exports.SOCKET_EVENTS = {
     // E6: tarefa agendada criada/alterada/rodou e tarefa apagada
     INTERNAL_AGENT_TASK_UPDATED: 'internal-agent:task-updated',
     INTERNAL_AGENT_TASK_DELETED: 'internal-agent:task-deleted',
+    // Bloco 3 (26/11/2026): pedido a outro agente / trabalho em segundo plano
+    INTERNAL_AGENT_DELEGATION_UPDATED: 'internal-agent:delegation-updated',
 };
 // ============================================================================
 // ROOM PATTERNS

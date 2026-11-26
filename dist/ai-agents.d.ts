@@ -163,6 +163,8 @@ export interface AIAgent {
     conversationStarters?: string[];
     /** Funções da plataforma (E2, 24/11/2026). Ausente = desligado. */
     platformFunctions?: AIAgentPlatformFunctionsConfig;
+    /** Bloco 3 (26/11/2026): agentes INTERNOS com quem este agente pode conversar (`ask_agent`). Ausente/vazio = desligado. */
+    delegation?: AIAgentDelegationConfig;
     /** D9. Só atendimento; no interno é ignorado (sempre "só usuários"). Ausente = false. */
     onlyCompanyUsers?: boolean;
     /** D12. Pedir confirmação antes de alterar dados. Ausente = false. */
@@ -350,6 +352,8 @@ export interface CreateAIAgentRequest {
     conversationStarters?: string[];
     /** Funções da plataforma (E2). Ausente = desligado. */
     platformFunctions?: AIAgentPlatformFunctionsConfig;
+    /** Bloco 3: agentes internos com quem pode conversar. Ausente/vazio = desligado. */
+    delegation?: AIAgentDelegationConfig;
     /** D9. Só atendimento. Ausente = false. */
     onlyCompanyUsers?: boolean;
     /** D12. Ausente = false. */
@@ -388,6 +392,8 @@ export interface UpdateAIAgentRequest {
     conversationStarters?: string[];
     /** Funções da plataforma (E2). */
     platformFunctions?: AIAgentPlatformFunctionsConfig;
+    /** Bloco 3: agentes internos com quem pode conversar. */
+    delegation?: AIAgentDelegationConfig;
     /** D9. Só atendimento. */
     onlyCompanyUsers?: boolean;
     /** D12. */
@@ -407,6 +413,32 @@ export interface UpdateAIAgentRequest {
     officialInfoOverride?: AIAgentOfficialInfoOverride;
     webhooks?: Omit<AIAgentWebhook, 'createdAt' | 'updatedAt'>[];
 }
+/**
+ * Bloco 3 dos agentes internos (26/11/2026, decisões do dono Q-C/Q-D/Q-G):
+ * o agente (gestor) pede tarefas a agentes INTERNOS (operadores) pela
+ * ferramenta `ask_agent`. Profundidade 1 — o operador não pede a ninguém. O
+ * operador age com a interseção do que quem fala pode e do que ele pode.
+ */
+export interface AIAgentDelegationConfig {
+    /** Agentes internos liberados (ids). Vazio = desligado. */
+    agentIds: string[];
+}
+export declare const AGENT_DELEGATION_LIMITS: {
+    /** Agentes na lista. */
+    readonly maxAgents: 10;
+    /** Pedidos a outros agentes numa mesma resposta. */
+    readonly maxPerTurn: 3;
+    /** Pedido na hora: passou disto, vai para o segundo plano (chat da equipe) ou falha (atendimento). */
+    readonly syncTimeoutMs: 120000;
+    /** Passos do operador. */
+    readonly operatorMaxSteps: 15;
+    /** Trabalho em segundo plano: teto. */
+    readonly backgroundTimeoutMs: 600000;
+    /** Trabalhos em segundo plano em andamento por pessoa. */
+    readonly maxBackgroundPerUser: 3;
+    /** Resumo que volta ao gestor. */
+    readonly summaryChars: 6000;
+};
 /**
  * Voz do agente.
  *

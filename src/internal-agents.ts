@@ -56,7 +56,9 @@ export type AgentSessionContentBlock =
   | AgentSessionConfirmationBlock
   | AgentSessionFileBlock
   | AgentSessionChartBlock
-  | AgentSessionTaskBlock;
+  | AgentSessionTaskBlock
+  | AgentSessionTableBlock
+  | AgentSessionDelegationBlock;
 
 // ── E6 (25/11/2026): tarefas agendadas — plano 2026-11-25-agentes-internos-e6.md §5 ──
 
@@ -193,6 +195,86 @@ export interface AgentSessionFileBlock {
   preview?: { columns: string[]; rows: string[][] };
 }
 
+/** Estado de um pedido a outro agente (bloco 3). */
+export type AgentDelegationStatus = 'working' | 'background' | 'completed' | 'failed' | 'canceled';
+
+/**
+ * Pedido a outro agente, ou trabalho em segundo plano (bloco 3, 26/11/2026).
+ * O cartão mostra o andamento ao vivo; `childSessionId` abre a conversa do
+ * operador (só leitura — decisão do dono: cartão + link).
+ */
+export interface AgentSessionDelegationBlock {
+  type: 'delegation';
+  delegationId: string;
+  agentId: string;
+  agentName: string;
+  /** O que foi pedido. */
+  objective: string;
+  status: AgentDelegationStatus;
+  /** Trabalho do PRÓPRIO agente em segundo plano (sem operador). */
+  self?: boolean;
+  /** Conversa do operador (só leitura). */
+  childSessionId?: string;
+  /** O que voltou (até `AGENT_DELEGATION_LIMITS.summaryChars`). */
+  summary?: string;
+  /** Motivo em pt-BR quando `failed`/`canceled`. */
+  error?: string;
+  /** Passos do operador (rótulos), para o cartão. */
+  steps?: AgentSessionToolStep[];
+  /** ISO */
+  startedAt: string;
+  /** ISO */
+  finishedAt?: string;
+}
+
+/** Tetos da tabela completa na tela (`show_list`, decisão do dono Q-B de 25/11/2026). */
+export const AGENT_TABLE_LIMITS = {
+  /** Linhas guardadas por tabela (o mesmo teto da exportação). */
+  maxRows: 30_000,
+  /** Linhas que vêm dentro do cartão. */
+  previewRows: 10,
+  /** Linhas por página na tela. */
+  pageSize: 100,
+  /** Linhas por documento guardado no servidor. */
+  chunkRows: 500,
+  /** Colunas no máximo. */
+  maxColumns: 40,
+} as const;
+
+/**
+ * Lista inteira do sistema na tela (`show_list`). As linhas ficam no servidor
+ * (`agent-session-tables`), a tela pede por página e com busca; o modelo só
+ * recebe o total, as colunas e algumas linhas. Some junto com a conversa.
+ */
+export interface AgentSessionTableBlock {
+  type: 'table';
+  tableId: string;
+  title: string;
+  /** Lista de origem (ex.: 'list_leads'). */
+  source: string;
+  columns: string[];
+  /** Linhas guardadas. */
+  totalRows: number;
+  /** A lista tinha mais registros que o teto (`AGENT_TABLE_LIMITS.maxRows`). */
+  truncated?: boolean;
+  /** Total que a lista informou (quando diferente de `totalRows`). */
+  sourceTotal?: number;
+  /** Primeiras linhas (até `AGENT_TABLE_LIMITS.previewRows`). */
+  preview: string[][];
+}
+
+/** Uma página de uma tabela guardada (GET …/tables/:tableId). */
+export interface AgentSessionTablePageResponse {
+  tableId: string;
+  columns: string[];
+  rows: string[][];
+  page: number;
+  pageSize: number;
+  /** Linhas que casam com a busca (ou todas, sem busca). */
+  matchingRows: number;
+  totalRows: number;
+}
+
 export type AgentChartType = 'bar' | 'line' | 'area' | 'pie';
 
 /** Gráfico desenhado pela tela (recharts) a partir dos dados que o agente mandou. */
@@ -299,6 +381,38 @@ export interface InternalAgentConfirmationUpdatedEvent {
 
 export type AgentSessionToolStepStatus = 'running' | 'done' | 'error';
 /** Passo de ferramenta mostrado na resposta ("Consultou a base Imóveis"). Sem args nem resultado. */
+/** Tetos do detalhe de cada passo (plano de qualidade Q1/Q3, 25/11/2026). */
+export const AGENT_STEP_DETAIL_LIMITS = {
+  /** Campos que o agente mandou, em JSON. */
+  inputChars: 1_000,
+  /** O que voltou, em JSON compacto. */
+  outputChars: 4_000,
+  /** Resumo de uma frase. */
+  summaryChars: 200,
+  /** O que entra no histórico do modelo por resposta anterior ("o que já consultei"). */
+  historyCharsPerMessage: 600,
+} as const;
+
+/**
+ * O que o passo pediu e o que voltou (plano de qualidade, 25/11/2026). A tela
+ * mostra ao clicar no passo; o histórico do modelo leva o `summary`, para o
+ * agente lembrar o que JÁ consultou (conversa `6b0785151d6353e3e79d28c8` do
+ * servidor de teste: sem isso ele "confessou" ter inventado um limite que viu).
+ * Nunca leva segredo (mesmo filtro do resultado que vai ao modelo).
+ */
+export interface AgentSessionToolStepDetail {
+  /** O que o passo procurou (só a busca de funções). */
+  query?: string;
+  /** Função da plataforma chamada (ex.: 'list_leads'), quando o passo chama uma. */
+  functionName?: string;
+  /** Campos que o agente mandou, compactos. */
+  input?: Record<string, unknown>;
+  /** O que voltou em uma frase ("20 de 25.001 registros", "Erro: …"). */
+  summary?: string;
+  /** O que voltou, compacto — o que a tela mostra ao abrir o passo. */
+  output?: unknown;
+}
+
 export interface AgentSessionToolStep {
   /** toolCallId do modelo */
   id: string;
@@ -311,6 +425,8 @@ export interface AgentSessionToolStep {
   startedAt: string;
   /** ISO */
   finishedAt?: string;
+  /** O que pediu e o que voltou (ausente nas mensagens anteriores a 25/11/2026). */
+  detail?: AgentSessionToolStepDetail;
 }
 
 /** E4: como a mensagem do usuário entrou. */
@@ -378,6 +494,10 @@ export interface AgentSessionResponse {
   voice: AgentVoiceAvailability;
   /** E6: conversa de uma tarefa agendada. */
   scheduledTaskId?: string;
+  /** Bloco 3: conversa de um operador, aberta pelo cartão do pedido (fica fora da lista). */
+  parentSessionId?: string;
+  /** Bloco 3: o pedido que criou esta conversa. */
+  delegationId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -534,4 +654,11 @@ export interface AgentSpeechPreviewRequest {
   /** Voz clonada (id do documento em `voices`). */
   voiceId?: string;
   speed?: number;
+}
+
+/** Bloco 3: andamento de um pedido a outro agente (cartão na resposta do gestor). */
+export interface InternalAgentDelegationUpdatedEvent {
+  sessionId: string;
+  messageId: string;
+  block: AgentSessionDelegationBlock;
 }

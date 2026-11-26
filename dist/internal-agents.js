@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AGENT_PAGE_CONTEXT_LIMITS = exports.AGENT_EXPORT_LIMITS = exports.AGENT_TASK_LIMITS = exports.AGENT_SESSION_LIMITS = void 0;
+exports.AGENT_STEP_DETAIL_LIMITS = exports.AGENT_PAGE_CONTEXT_LIMITS = exports.AGENT_TABLE_LIMITS = exports.AGENT_EXPORT_LIMITS = exports.AGENT_TASK_LIMITS = exports.AGENT_SESSION_LIMITS = void 0;
 /** Limites do chat interno — usados pelo Zod do backend e pela tela. */
 exports.AGENT_SESSION_LIMITS = {
     textMaxChars: 20_000,
@@ -38,10 +38,35 @@ exports.AGENT_EXPORT_LIMITS = {
     /** Linhas da prévia guardada no bloco do arquivo (modo exibição). */
     previewRows: 50,
 };
+/** Tetos da tabela completa na tela (`show_list`, decisão do dono Q-B de 25/11/2026). */
+exports.AGENT_TABLE_LIMITS = {
+    /** Linhas guardadas por tabela (o mesmo teto da exportação). */
+    maxRows: 30_000,
+    /** Linhas que vêm dentro do cartão. */
+    previewRows: 10,
+    /** Linhas por página na tela. */
+    pageSize: 100,
+    /** Linhas por documento guardado no servidor. */
+    chunkRows: 500,
+    /** Colunas no máximo. */
+    maxColumns: 40,
+};
 exports.AGENT_PAGE_CONTEXT_LIMITS = {
     routeMaxChars: 300,
     screenMaxChars: 120,
     entitiesMax: 10,
     filtersMax: 12,
     valueMaxChars: 120,
+};
+/** Passo de ferramenta mostrado na resposta ("Consultou a base Imóveis"). Sem args nem resultado. */
+/** Tetos do detalhe de cada passo (plano de qualidade Q1/Q3, 25/11/2026). */
+exports.AGENT_STEP_DETAIL_LIMITS = {
+    /** Campos que o agente mandou, em JSON. */
+    inputChars: 1_000,
+    /** O que voltou, em JSON compacto. */
+    outputChars: 4_000,
+    /** Resumo de uma frase. */
+    summaryChars: 200,
+    /** O que entra no histórico do modelo por resposta anterior ("o que já consultei"). */
+    historyCharsPerMessage: 600,
 };

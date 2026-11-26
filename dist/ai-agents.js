@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PLATFORM_FUNCTION_LIMITS = exports.AI_AGENT_KIND_LABELS = exports.DEFAULT_AI_AGENT_KIND = exports.AI_AGENT_KINDS = exports.AGENT_SEGMENT_LABELS = exports.AGENT_CATEGORY_LABELS = exports.AgentSegment = exports.AgentCategory = void 0;
+exports.PLATFORM_FUNCTION_LIMITS = exports.AGENT_DELEGATION_LIMITS = exports.AI_AGENT_KIND_LABELS = exports.DEFAULT_AI_AGENT_KIND = exports.AI_AGENT_KINDS = exports.AGENT_SEGMENT_LABELS = exports.AGENT_CATEGORY_LABELS = exports.AgentSegment = exports.AgentCategory = void 0;
 exports.getAgentKind = getAgentKind;
 exports.isInternalAgent = isInternalAgent;
 /**
@@ -97,6 +97,22 @@ function getAgentKind(agent) {
 function isInternalAgent(agent) {
     return getAgentKind(agent) === 'internal';
 }
+exports.AGENT_DELEGATION_LIMITS = {
+    /** Agentes na lista. */
+    maxAgents: 10,
+    /** Pedidos a outros agentes numa mesma resposta. */
+    maxPerTurn: 3,
+    /** Pedido na hora: passou disto, vai para o segundo plano (chat da equipe) ou falha (atendimento). */
+    syncTimeoutMs: 120_000,
+    /** Passos do operador. */
+    operatorMaxSteps: 15,
+    /** Trabalho em segundo plano: teto. */
+    backgroundTimeoutMs: 600_000,
+    /** Trabalhos em segundo plano em andamento por pessoa. */
+    maxBackgroundPerUser: 3,
+    /** Resumo que volta ao gestor. */
+    summaryChars: 6_000,
+};
 exports.PLATFORM_FUNCTION_LIMITS = {
     findMaxResults: 8,
     resultMaxChars: 12_000,

@@ -19,6 +19,7 @@ import type {
   InternalAgentSpeechChunkEvent,
   InternalAgentSpeechEndEvent,
   InternalAgentTaskUpdatedEvent,
+  InternalAgentDelegationUpdatedEvent,
   InternalAgentTaskDeletedEvent,
 } from './internal-agents';
 
@@ -150,6 +151,8 @@ export const SOCKET_EVENTS = {
   // E6: tarefa agendada criada/alterada/rodou e tarefa apagada
   INTERNAL_AGENT_TASK_UPDATED: 'internal-agent:task-updated',
   INTERNAL_AGENT_TASK_DELETED: 'internal-agent:task-deleted',
+  // Bloco 3 (26/11/2026): pedido a outro agente / trabalho em segundo plano
+  INTERNAL_AGENT_DELEGATION_UPDATED: 'internal-agent:delegation-updated',
 } as const;
 
 // Type for event names
@@ -956,6 +959,7 @@ export interface SocketEventMap {
   [SOCKET_EVENTS.INTERNAL_AGENT_SPEECH_END]: InternalAgentSpeechEndEvent;
   [SOCKET_EVENTS.INTERNAL_AGENT_TASK_UPDATED]: InternalAgentTaskUpdatedEvent;
   [SOCKET_EVENTS.INTERNAL_AGENT_TASK_DELETED]: InternalAgentTaskDeletedEvent;
+  [SOCKET_EVENTS.INTERNAL_AGENT_DELEGATION_UPDATED]: InternalAgentDelegationUpdatedEvent;
 }
 
 // ============================================================================

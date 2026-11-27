@@ -21,6 +21,8 @@ import type {
   InternalAgentTaskUpdatedEvent,
   InternalAgentDelegationUpdatedEvent,
   InternalAgentTaskDeletedEvent,
+  InternalAgentVoiceLiveTranscriptEvent,
+  InternalAgentVoiceLiveEndedEvent,
 } from './internal-agents';
 
 // ============================================================================
@@ -153,6 +155,18 @@ export const SOCKET_EVENTS = {
   INTERNAL_AGENT_TASK_DELETED: 'internal-agent:task-deleted',
   // Bloco 3 (26/11/2026): pedido a outro agente / trabalho em segundo plano
   INTERNAL_AGENT_DELEGATION_UPDATED: 'internal-agent:delegation-updated',
+  // E7 (26/11/2026): voz em tempo real — cliente → servidor (com ack)
+  INTERNAL_AGENT_VOICE_LIVE_ATTACH: 'internal-agent:voice-live:attach',
+  INTERNAL_AGENT_VOICE_LIVE_PRESS: 'internal-agent:voice-live:press',
+  /** Pedaço de áudio (binário, PCM 16 bits mono 24 kHz), sem ack. */
+  INTERNAL_AGENT_VOICE_LIVE_AUDIO: 'internal-agent:voice-live:audio',
+  INTERNAL_AGENT_VOICE_LIVE_RELEASE: 'internal-agent:voice-live:release',
+  INTERNAL_AGENT_VOICE_LIVE_CANCEL: 'internal-agent:voice-live:cancel',
+  INTERNAL_AGENT_VOICE_LIVE_INTERRUPT: 'internal-agent:voice-live:interrupt',
+  INTERNAL_AGENT_VOICE_LIVE_END: 'internal-agent:voice-live:end',
+  // E7: servidor → só o socket que está falando
+  INTERNAL_AGENT_VOICE_LIVE_TRANSCRIPT: 'internal-agent:voice-live:transcript',
+  INTERNAL_AGENT_VOICE_LIVE_ENDED: 'internal-agent:voice-live:ended',
 } as const;
 
 // Type for event names
@@ -960,6 +974,8 @@ export interface SocketEventMap {
   [SOCKET_EVENTS.INTERNAL_AGENT_TASK_UPDATED]: InternalAgentTaskUpdatedEvent;
   [SOCKET_EVENTS.INTERNAL_AGENT_TASK_DELETED]: InternalAgentTaskDeletedEvent;
   [SOCKET_EVENTS.INTERNAL_AGENT_DELEGATION_UPDATED]: InternalAgentDelegationUpdatedEvent;
+  [SOCKET_EVENTS.INTERNAL_AGENT_VOICE_LIVE_TRANSCRIPT]: InternalAgentVoiceLiveTranscriptEvent;
+  [SOCKET_EVENTS.INTERNAL_AGENT_VOICE_LIVE_ENDED]: InternalAgentVoiceLiveEndedEvent;
 }
 
 // ============================================================================

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AGENT_STEP_DETAIL_LIMITS = exports.AGENT_PAGE_CONTEXT_LIMITS = exports.AGENT_TABLE_LIMITS = exports.AGENT_EXPORT_LIMITS = exports.AGENT_TASK_LIMITS = exports.AGENT_SESSION_LIMITS = void 0;
+exports.AGENT_VOICE_LIVE_LIMITS = exports.AGENT_STEP_DETAIL_LIMITS = exports.AGENT_PAGE_CONTEXT_LIMITS = exports.AGENT_TABLE_LIMITS = exports.AGENT_EXPORT_LIMITS = exports.AGENT_TASK_LIMITS = exports.AGENT_SESSION_LIMITS = void 0;
 /** Limites do chat interno — usados pelo Zod do backend e pela tela. */
 exports.AGENT_SESSION_LIMITS = {
     textMaxChars: 20_000,
@@ -69,4 +69,20 @@ exports.AGENT_STEP_DETAIL_LIMITS = {
     summaryChars: 200,
     /** O que entra no histórico do modelo por resposta anterior ("o que já consultei"). */
     historyCharsPerMessage: 600,
+};
+// ── E7: voz em tempo real (DOCS/superpowers/plans/2026-11-26-agentes-internos-e7-voz-tempo-real.md) ──
+/** Limites da conversa de voz em tempo real (decisões V2 e V3 do dono, 26/11/2026). */
+exports.AGENT_VOICE_LIVE_LIMITS = {
+    /** Uma conversa de voz dura no máximo 10 minutos; a pessoa pode começar outra na hora. */
+    sessionMaxMs: 600_000,
+    /** Sem ninguém falar (nem a pessoa, nem o agente) por 1 minuto, encerra. */
+    silenceMs: 60_000,
+    /** Uma fala (segurar o botão) solta sozinha depois disso. */
+    utteranceMaxMs: 120_000,
+    /** Fala mais curta que isso é ignorada (toque sem querer). */
+    utteranceMinMs: 300,
+    /** Áudio enviado: PCM 16 bits, mono, nesta taxa. */
+    sampleRate: 24_000,
+    /** Tamanho de cada pedaço enviado pelo socket. */
+    chunkMs: 100,
 };

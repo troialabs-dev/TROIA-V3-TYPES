@@ -439,6 +439,11 @@ export type AgentSessionInputMode = 'voice';
 export interface AgentVoiceAvailability {
   available: boolean;
   reason?: 'agent_off' | 'no_stt' | 'no_tts';
+  /**
+   * E7: dá para conversar em TEMPO REAL (a transcrição marcada é do Vercel AI Gateway, que transcreve em
+   * fluxo). Ausente/false = só a gravação da E4.
+   */
+  live?: boolean;
 }
 
 export interface AgentSessionMessageResponse {
@@ -628,6 +633,60 @@ export interface InternalAgentSpeechEndEvent {
   reason: 'done' | 'stopped' | 'failed';
   /** Motivo legível em pt-BR quando `failed`. */
   error?: string;
+}
+
+// ── E7: voz em tempo real (DOCS/superpowers/plans/2026-11-26-agentes-internos-e7-voz-tempo-real.md) ──
+/** Limites da conversa de voz em tempo real (decisões V2 e V3 do dono, 26/11/2026). */
+export const AGENT_VOICE_LIVE_LIMITS = {
+  /** Uma conversa de voz dura no máximo 10 minutos; a pessoa pode começar outra na hora. */
+  sessionMaxMs: 600_000,
+  /** Sem ninguém falar (nem a pessoa, nem o agente) por 1 minuto, encerra. */
+  silenceMs: 60_000,
+  /** Uma fala (segurar o botão) solta sozinha depois disso. */
+  utteranceMaxMs: 120_000,
+  /** Fala mais curta que isso é ignorada (toque sem querer). */
+  utteranceMinMs: 300,
+  /** Áudio enviado: PCM 16 bits, mono, nesta taxa. */
+  sampleRate: 24_000,
+  /** Tamanho de cada pedaço enviado pelo socket. */
+  chunkMs: 100,
+} as const;
+
+/** POST /internal-agents/voice-live — confere app, permissão, agente e créditos e devolve o código da conversa de voz. */
+export interface StartVoiceLiveRequest {
+  /** Conversa existente; sem ela, `agentId` e a conversa nasce na 1ª fala. */
+  sessionId?: string;
+  agentId?: string;
+}
+export interface StartVoiceLiveResponse {
+  /** Código curto que o socket usa (`voice-live:attach`). Vale 30 s até ser usado. */
+  liveId: string;
+  /** Quando a conversa de voz acaba pelo limite de tempo. */
+  endsAt: string;
+}
+
+export type VoiceLiveEndReason = 'limit' | 'silence' | 'closed' | 'replaced' | 'error';
+
+/** Resposta (ack) dos eventos do cliente. */
+export type VoiceLiveAck<T extends object = object> = ({ ok: true } & T) | { ok: false; error: string };
+
+/** Ack do `voice-live:release`: o turno começou, ou a fala foi ignorada (com o motivo para a tela). */
+export interface VoiceLiveReleaseResult {
+  run?: StartAgentRunResponse;
+  ignored?: 'silence' | 'too_short' | 'empty';
+  message?: string;
+}
+
+/** Texto parcial enquanto a pessoa fala (só para o socket que está falando). */
+export interface InternalAgentVoiceLiveTranscriptEvent {
+  liveId: string;
+  text: string;
+}
+export interface InternalAgentVoiceLiveEndedEvent {
+  liveId: string;
+  reason: VoiceLiveEndReason;
+  /** Motivo legível em pt-BR. */
+  message?: string;
 }
 
 /** Voz pronta oferecida no editor do agente (GET /internal-agents/speech-voices). */

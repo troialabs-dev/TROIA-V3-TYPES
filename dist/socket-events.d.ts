@@ -7,7 +7,7 @@ import type { SoundKey } from './notifications';
 import type { ChannelDisconnectInfo } from './channels';
 import type { ChannelSyncStatus, ChannelActivityType } from './channel-dashboard';
 import type { LeadCaptureSession } from './lead-capture';
-import type { InternalAgentRunStartedEvent, InternalAgentRunDeltaEvent, InternalAgentRunStepEvent, InternalAgentRunFinishedEvent, InternalAgentSessionUpdatedEvent, InternalAgentSessionDeletedEvent, InternalAgentConfirmationUpdatedEvent, InternalAgentSpeechChunkEvent, InternalAgentSpeechEndEvent, InternalAgentTaskUpdatedEvent, InternalAgentDelegationUpdatedEvent, InternalAgentTaskDeletedEvent } from './internal-agents';
+import type { InternalAgentRunStartedEvent, InternalAgentRunDeltaEvent, InternalAgentRunStepEvent, InternalAgentRunFinishedEvent, InternalAgentSessionUpdatedEvent, InternalAgentSessionDeletedEvent, InternalAgentConfirmationUpdatedEvent, InternalAgentSpeechChunkEvent, InternalAgentSpeechEndEvent, InternalAgentTaskUpdatedEvent, InternalAgentDelegationUpdatedEvent, InternalAgentTaskDeletedEvent, InternalAgentVoiceLiveTranscriptEvent, InternalAgentVoiceLiveEndedEvent } from './internal-agents';
 export declare const SOCKET_EVENTS: {
     readonly CONVERSATION_MESSAGE: "conversation:message";
     readonly CONVERSATION_UPDATED: "conversation:updated";
@@ -88,6 +88,16 @@ export declare const SOCKET_EVENTS: {
     readonly INTERNAL_AGENT_TASK_UPDATED: "internal-agent:task-updated";
     readonly INTERNAL_AGENT_TASK_DELETED: "internal-agent:task-deleted";
     readonly INTERNAL_AGENT_DELEGATION_UPDATED: "internal-agent:delegation-updated";
+    readonly INTERNAL_AGENT_VOICE_LIVE_ATTACH: "internal-agent:voice-live:attach";
+    readonly INTERNAL_AGENT_VOICE_LIVE_PRESS: "internal-agent:voice-live:press";
+    /** Pedaço de áudio (binário, PCM 16 bits mono 24 kHz), sem ack. */
+    readonly INTERNAL_AGENT_VOICE_LIVE_AUDIO: "internal-agent:voice-live:audio";
+    readonly INTERNAL_AGENT_VOICE_LIVE_RELEASE: "internal-agent:voice-live:release";
+    readonly INTERNAL_AGENT_VOICE_LIVE_CANCEL: "internal-agent:voice-live:cancel";
+    readonly INTERNAL_AGENT_VOICE_LIVE_INTERRUPT: "internal-agent:voice-live:interrupt";
+    readonly INTERNAL_AGENT_VOICE_LIVE_END: "internal-agent:voice-live:end";
+    readonly INTERNAL_AGENT_VOICE_LIVE_TRANSCRIPT: "internal-agent:voice-live:transcript";
+    readonly INTERNAL_AGENT_VOICE_LIVE_ENDED: "internal-agent:voice-live:ended";
 };
 export type SocketEventName = typeof SOCKET_EVENTS[keyof typeof SOCKET_EVENTS];
 /**
@@ -788,6 +798,8 @@ export interface SocketEventMap {
     [SOCKET_EVENTS.INTERNAL_AGENT_TASK_UPDATED]: InternalAgentTaskUpdatedEvent;
     [SOCKET_EVENTS.INTERNAL_AGENT_TASK_DELETED]: InternalAgentTaskDeletedEvent;
     [SOCKET_EVENTS.INTERNAL_AGENT_DELEGATION_UPDATED]: InternalAgentDelegationUpdatedEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_VOICE_LIVE_TRANSCRIPT]: InternalAgentVoiceLiveTranscriptEvent;
+    [SOCKET_EVENTS.INTERNAL_AGENT_VOICE_LIVE_ENDED]: InternalAgentVoiceLiveEndedEvent;
 }
 export declare const SOCKET_ROOMS: {
     /**

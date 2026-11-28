@@ -1,4 +1,4 @@
-export type BaseThemeId = 'apple' | 'current'
+export type BaseThemeId = 'apple' | 'current' | 'porcelana'
 
 export type IconPackId = 'hi2' | 'lu' | 'fi' | 'tb'
 export type RadiusScale = 'conservative' | 'moderate' | 'rounded'

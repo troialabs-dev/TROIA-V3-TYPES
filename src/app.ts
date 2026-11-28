@@ -36,6 +36,8 @@ export interface App extends FullBaseDocument {
    * A privada nunca sai do backend (a rota pública devolve só a pública).
    */
   vapidKeys?: VapidKeys;
+  /** Mostra o motor da TroiaChat nas telas de entrada; ausente = não. */
+  loginEngine?: boolean;
 }
 
 export interface VapidKeys {
@@ -87,6 +89,8 @@ export interface UpdateAppRequest {
   mcpUrl?: string;
   support?: AppSupport;
   pwaIcons?: PwaIcons;
+  /** Mostra o motor da TroiaChat nas telas de entrada; ausente = não. */
+  loginEngine?: boolean;
 }
 
 export type AppStatus = ActiveStatus;
@@ -122,6 +126,8 @@ export interface AppResponse {
   support?: AppSupport;
   costs: CreditCostEntry[];
   pwaIcons?: PwaIcons;
+  /** Mostra o motor da TroiaChat nas telas de entrada; ausente = não. */
+  loginEngine: boolean;
   createdAt: string;
   updatedAt: string;
   // Phase A — provider capability flags
